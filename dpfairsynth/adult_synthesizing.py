@@ -1,7 +1,7 @@
 from synthesizer import DataSynthesizer
 import adult_preprocessing
 
-def synthesizing_pipeline(epsilon_DP, epsilon_fair):
+def define_settings():
     DP_settings_dict={
         "cliques": 'all 2-way',
     }
@@ -32,12 +32,15 @@ def synthesizing_pipeline(epsilon_DP, epsilon_fair):
         "aif360_conversion": 'adult', # Can also be a callable function or None
     }
 
-    # Get dataset
+    return DP_settings_dict, fair_settings_dict, misc_settings_dict
+
+def synthesizing_pipeline(epsilon_DP, epsilon_fair):
+    DP_settings_dict, fair_settings_dict, misc_settings_dict = define_settings()
+
+    # Get domain_dict
     df, domain_dict = adult_preprocessing.load_preprocessed_adult_data()
-
-    # Get settings for synthesizing
     DP_settings_dict["domain_dict"] = domain_dict
-
+    
     # Synthesize data
     data_synthesizer = DataSynthesizer(epsilon_DP, epsilon_fair,
                                        DP_settings_dict, 
@@ -45,3 +48,4 @@ def synthesizing_pipeline(epsilon_DP, epsilon_fair):
                                        misc_settings_dict)
     synth_df = data_synthesizer.synthesize_DP_fair_df(df)
     return synth_df
+

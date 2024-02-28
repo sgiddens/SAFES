@@ -7,6 +7,7 @@ from aif360.sklearn.metrics import statistical_parity_difference, average_odds_d
 
 from custom_metrics import mean_outcome_difference, KS_test
 from synthesizer import DataSynthesizer
+import adult_synthesizing
 import adult_preprocessing
 import utils
 
@@ -37,6 +38,11 @@ class DPFairEvaluator():
         # Load and store train/test dataframes
         if dataset=="adult":
             df, domain_dict = adult_preprocessing.load_preprocessed_adult_data()
+            # Define settings
+            (self.DP_settings_dict, 
+            self.fair_settings_dict, 
+            self.misc_settings_dict) = adult_synthesizing.define_settings()
+            self.DP_settings_dict["domain_dict"] = domain_dict
         else:
             raise ValueError("dataset value not currently supported.")
         X, y = utils.df_to_Xy(df, y_label)
@@ -45,7 +51,6 @@ class DPFairEvaluator():
         self.df_train = utils.Xy_to_df(X_train, y_train)
         self.df_test = utils.Xy_to_df(X_test, y_test)
 
-        self.domain_dict = domain_dict
         self.models = models
 
         self.prot_attr = prot_attr
