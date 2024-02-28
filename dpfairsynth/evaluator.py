@@ -107,7 +107,9 @@ class DPFairEvaluator():
                       f"{epsilon_fair:.2}-fair datasets"
                 print(msg)
                 for _ in tqdm(range(n)):
-                    # Define settings used
+                    
+
+                    # Record settings used
                     self.results_dict["Linear epsilon (privacy)"].append(linear_epsilon_priv)
                     self.results_dict["Epsilon (privacy)"].append(epsilon_priv)
                     self.results_dict["Epsilon (fairness)"].append(epsilon_fair)

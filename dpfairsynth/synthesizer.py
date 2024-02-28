@@ -40,6 +40,34 @@ class DataSynthesizer():
         if fair_settings_dict["custom_distortion"]=='adult':
             self.custom_distortion = adult_preprocessing.custom_distortion
 
+    def set_required_cols(self, df):
+        if self.aif360_conversion:
+            df = self.aif360_conversion(df)
+        
+        # Convert to AIF360 StandardDataset and back to dataframe
+        std_dataset = StandardDataset(df.copy(), label_name=self.y_label, 
+                favorable_classes=self.favorable_classes,
+                protected_attribute_names=self.protected_attribute_names,
+                privileged_classes=self.privileged_classes,
+                categorical_features=self.categorical_features,
+                features_to_keep=self.features_to_keep, 
+                metadata=self.metadata)
+        df = std_dataset.convert_to_dataframe()[0]
+        self.required_cols = df.columns
+
+    def df_to_standard_dataset(self, df):
+        return StandardDataset(df, label_name=self.y_label, 
+                favorable_classes=self.favorable_classes,
+                protected_attribute_names=self.protected_attribute_names,
+                privileged_classes=self.privileged_classes,
+                categorical_features=self.categorical_features,
+                features_to_keep=self.features_to_keep, 
+                metadata=self.metadata)
+    
+    def correct_missing_cols(self, df, missing_cols):
+        df[list(missing_cols)] = 0.0
+        return df[self.required_cols]
+
     def synthesize_DP_fair_df(self, df, 
                               DP_settings_dict={
                                   "domain_dict": 'adult',
@@ -66,9 +94,12 @@ class DataSynthesizer():
                                   "custom_distortion": 'adult',
                                   "verbose": False,
                               }):
-        # Set DP/fair settings
+        # Set DP/fairness settings
         self.set_DP_settings(DP_settings_dict)
         self.set_fair_settings(fair_settings_dict)
+
+        # Define columns necessary for synthetic data
+        self.set_required_cols(df)
 
         # DP data synthesis
         if self.epsilon_DP:
@@ -79,20 +110,31 @@ class DataSynthesizer():
             df = self.aif360_conversion(df)
         
         # Convert to AIF360 StandardDataset
-        std_dataset = StandardDataset(df, label_name=self.y_label, 
-                favorable_classes=self.favorable_classes,
-                protected_attribute_names=self.protected_attribute_names,
-                privileged_classes=self.privileged_classes,
-                categorical_features=self.categorical_features,
-                features_to_keep=self.features_to_keep, 
-                metadata=self.metadata)
+        std_dataset = self.df_to_standard_dataset(df)
+
+        # Ensure no missing columns
+        tmp_df = std_dataset.convert_to_dataframe()[0]
+        missing_cols = set(self.required_cols) - set(tmp_df.columns)
+        if missing_cols:
+            tmp_df = self.correct_missing_cols(tmp_df, missing_cols)
+            std_dataset = self.df_to_standard_dataset(tmp_df)
 
         # Fairness transformation
         if self.epsilon_fair:
             std_dataset = self.synthesize_fair_df(std_dataset)
-
+        
+        # Account for random failure to converge, etc.
+        if std_dataset is None:
+            print("Fairness transformation failed.")
+            return None
+        
         # Convert back to df
         df = std_dataset.convert_to_dataframe()[0]
+
+        # Ensure no missing columns again
+        missing_cols = set(self.required_cols) - set(df.columns)
+        if missing_cols:
+            df = self.correct_missing_cols(df, missing_cols)
 
         return df
 
@@ -144,11 +186,17 @@ class DataSynthesizer():
         }
 
         OP = OptimPreproc(OptTools, optim_options, verbose=self.verbose)
-        OP = OP.fit(std_dataset)
+
+        try:
+            OP = OP.fit(std_dataset)
+        except:
+            print("Fairness transformation failed to converge...")
+            return None
 
         std_dataset_fair = OP.transform(std_dataset, transform_Y=True)
         try:
             std_dataset_fair = std_dataset.align_datasets(std_dataset_fair)
         except:
-            print("Failed to align")
+            print("Fairness-transformed data failed to align with original...")
+            return None
         return std_dataset_fair
