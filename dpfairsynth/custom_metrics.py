@@ -1,19 +1,48 @@
-# import numpy as np 
+import numpy as np 
 import pandas as pd
 from sklearn.utils import shuffle
 from sklearn.linear_model import LogisticRegression
 from scipy.stats import ks_2samp
 
-def mean_outcome_difference(df, prot_attr, y_label,
-                            priv_group, pos_label):
-    # if isinstance(prot_attr, list):
-    #     df["*".join(prot_attr)] = np.ones_like(df[prot_attr[0]])
-    #     for attr in prot_attr:
-    #         df["*".join(prot_attr)] *= df[attr]
-    #     prot_attr = "*".join(prot_attr)
+# TODO: Streamline this function
+def mean_outcome_difference(df, y_label, favorable_classes,
+                            prot_attr, privileged_classes):
+    favorable_class = 1
+    unfavorable_class = 0
+    privileged_class = 1
+    unprivileged_class = 0
+
+    # Define y as binary
     y = df[y_label]
-    unprivileged_group_mean = (y[df[prot_attr]!=priv_group]==pos_label).mean()
-    privileged_group_mean = (y[df[prot_attr]==priv_group]==pos_label).mean()
+    tmp_y = y.copy()
+    tmp_y = unfavorable_class
+    for c in favorable_classes:
+        tmp_y[y==c] = favorable_class
+    y = tmp_y
+
+    # Define privileged attribute(s) as binary
+    if isinstance(prot_attr, list):
+        df["*".join(prot_attr)] = np.ones_like(df[prot_attr[0]])
+        for attr, priv_class in zip(prot_attr, privileged_classes):
+            A = df[attr]
+            tmp_A = A.copy()
+            tmp_A = unprivileged_class
+            for p in priv_class:
+                tmp_A[A==p] = privileged_class
+            A = tmp_A
+            df["*".join(prot_attr)] *= A
+        prot_attr = "*".join(prot_attr)
+        A = df[prot_attr]
+    else:
+        A = df[prot_attr]
+        tmp_A = A.copy()
+        tmp_A = unprivileged_class
+        for p in privileged_classes:
+            tmp_A[A==p] = privileged_class
+        A = tmp_A
+    
+    unprivileged_group_mean = (y[A!=privileged_class]==favorable_class).mean()
+    privileged_group_mean = (y[A==privileged_class]==favorable_class).mean()
     return unprivileged_group_mean - privileged_group_mean
 
 def KS_test(df_real, df_synth):
