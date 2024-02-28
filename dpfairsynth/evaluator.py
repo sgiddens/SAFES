@@ -123,8 +123,12 @@ class DPFairEvaluator():
                           f"{epsilon_fair:.2}-fair datasets"
                 print(msg)
                 for _ in tqdm(range(n)):
-                    data_synthesizer = DataSynthesizer(epsilon_priv, epsilon_fair)
-
+                    ds = DataSynthesizer(epsilon_priv, epsilon_fair,
+                                                       self.DP_settings_dict,
+                                                       self.fair_settings_dict,
+                                                       self.misc_settings_dict)
+                    df_train_DPfair = ds.synthesize_DP_fair_df(self.df_train)
+                    # TODO: CONTINUE HERE
 
                     # Record settings used
                     self.results_dict["Linear epsilon (privacy)"].append(linear_epsilon_priv)
