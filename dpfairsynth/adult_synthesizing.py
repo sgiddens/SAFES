@@ -28,7 +28,10 @@ def synthesizing_pipeline(epsilon_DP, epsilon_fair):
         "verbose": False,
     }
 
-    custom_aif360_conversion = 'adult'
+    misc_settings_dict={
+        "aif360_conversion": 'adult', # Can also be a callable function or None
+    }
+
     # Get dataset
     df, domain_dict = adult_preprocessing.load_preprocessed_adult_data()
 
@@ -37,7 +40,8 @@ def synthesizing_pipeline(epsilon_DP, epsilon_fair):
 
     # Synthesize data
     data_synthesizer = DataSynthesizer(epsilon_DP, epsilon_fair,
-                                       custom_aif360_conversion)
-    synth_df = data_synthesizer.synthesize_DP_fair_df(df, DP_settings_dict, 
-                                                      fair_settings_dict)
+                                       DP_settings_dict, 
+                                       fair_settings_dict,
+                                       misc_settings_dict)
+    synth_df = data_synthesizer.synthesize_DP_fair_df(df)
     return synth_df

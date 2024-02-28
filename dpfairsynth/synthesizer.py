@@ -13,17 +13,43 @@ from dp_mechanisms import Laplace_mech
 import adult_preprocessing
 
 class DataSynthesizer():
-    def __init__(self, epsilon_DP=None, epsilon_fair=None, 
-                 custom_aif360_conversion='adult'):
+    def __init__(self, epsilon_DP=None, epsilon_fair=None,
+                 DP_settings_dict={
+                    "domain_dict": 'adult',
+                    "cliques": 'all 2-way',
+                },
+                fair_settings_dict={
+                    "y_label": "income>50K",
+                    "favorable_classes": [1],
+                    "protected_attribute_names": ['race'],
+                    "privileged_classes": [[1]],
+                    "categorical_features": [
+                        'age-decade',
+                        'education-reduced'
+                    ],
+                    "features_to_keep": [
+                        'age-decade',
+                        'education-reduced',
+                        'race-reduced',
+                        'sex-num',
+                        'income>50K',
+                    ],
+                    "metadata": {'label_maps': [{1.0: '>50K', 0.0: '<=50K'}],
+                                'protected_attribute_maps': [{1.0: 'White', 0.0: 'Non-white'}]},
+                    "custom_distortion": 'adult',
+                    "verbose": False,
+                },
+                misc_settings_dict={
+                    "aif360_conversion": 'adult',
+                }):
+                #  custom_aif360_conversion='adult'):
         self.epsilon_DP = epsilon_DP
         self.epsilon_fair = epsilon_fair
 
-        if custom_aif360_conversion=='adult':
-            self.aif360_conversion = adult_preprocessing.custom_aif360_conversion
-        elif callable(custom_aif360_conversion):
-            self.aif360_conversion = custom_aif360_conversion
-        else:
-            self.aif360_conversion = None
+        # Set DP/fairness/misc settings
+        self.set_DP_settings(DP_settings_dict)
+        self.set_fair_settings(fair_settings_dict)
+        self.set_misc_settings(misc_settings_dict)
 
     def set_DP_settings(self, DP_settings_dict):
         for k, v in DP_settings_dict.items():
@@ -39,6 +65,14 @@ class DataSynthesizer():
 
         if fair_settings_dict["custom_distortion"]=='adult':
             self.custom_distortion = adult_preprocessing.custom_distortion
+
+    def set_misc_settings(self, misc_settings_dict):
+        for k, v in misc_settings_dict.items():
+            setattr(self, k, v)
+
+        if misc_settings_dict["aif360_conversion"]=='adult':
+            self.aif360_conversion = adult_preprocessing.custom_aif360_conversion
+
 
     def set_required_cols(self, df):
         if self.aif360_conversion:
@@ -68,36 +102,7 @@ class DataSynthesizer():
         df[list(missing_cols)] = 0.0
         return df[self.required_cols]
 
-    def synthesize_DP_fair_df(self, df, 
-                              DP_settings_dict={
-                                  "domain_dict": 'adult',
-                                  "cliques": 'all 2-way',
-                              },
-                              fair_settings_dict={
-                                  "y_label": "income>50K",
-                                  "favorable_classes": [1],
-                                  "protected_attribute_names": ['race'],
-                                  "privileged_classes": [[1]],
-                                  "categorical_features": [
-                                      'age-decade',
-                                      'education-reduced'
-                                  ],
-                                  "features_to_keep": [
-                                      'age-decade',
-                                      'education-reduced',
-                                      'race-reduced',
-                                      'sex-num',
-                                      'income>50K',
-                                  ],
-                                  "metadata": {'label_maps': [{1.0: '>50K', 0.0: '<=50K'}],
-                                               'protected_attribute_maps': [{1.0: 'White', 0.0: 'Non-white'}]},
-                                  "custom_distortion": 'adult',
-                                  "verbose": False,
-                              }):
-        # Set DP/fairness settings
-        self.set_DP_settings(DP_settings_dict)
-        self.set_fair_settings(fair_settings_dict)
-
+    def synthesize_DP_fair_df(self, df):
         # Define columns necessary for synthetic data
         self.set_required_cols(df)
 

@@ -6,6 +6,7 @@ from sklearn.metrics import precision_score, accuracy_score, f1_score, recall_sc
 from aif360.sklearn.metrics import statistical_parity_difference, average_odds_difference
 
 from custom_metrics import mean_outcome_difference, KS_test
+from synthesizer import DataSynthesizer
 import adult_preprocessing
 import utils
 
@@ -89,6 +90,9 @@ class DPFairEvaluator():
                              for metric in self.model_fairness_metrics})
         self.results_dict = results_dict
 
+    def update_results_dict(self, new_results):
+        pass
+
     def save_results(self):
         pass
 
@@ -99,15 +103,23 @@ class DPFairEvaluator():
         for epsilon_fair in epsilons_fair:
             for linear_epsilon_priv in linear_epsilons_priv:
                 epsilon_priv = 10**linear_epsilon_priv if linear_epsilon_priv is not None else None
-                if epsilon_fair is None and linear_epsilon_priv is None:
+                n = n_repeats
+                if epsilon_fair is None and epsilon_priv is None:
                     n = 1
+                    msg = "Simulating original dataset"
+                elif epsilon_fair is None:
+                    msg = f"Simulating n={n} repeats using {epsilon_priv:.2}-DP "\
+                          f"datasets"
+                elif epsilon_priv is None:
+                    msg = f"Simulating n={n} repeats using {epsilon_fair:.2}-DP "\
+                          f"datasets"
                 else:
-                    n = n_repeats
-                msg = f"Simulating n={n} repeats using {epsilon_fair:.2}-DP,"\
-                      f"{epsilon_fair:.2}-fair datasets"
+                    msg = f"Simulating n={n} repeats using {epsilon_priv:.2}-DP, "\
+                          f"{epsilon_fair:.2}-fair datasets"
                 print(msg)
                 for _ in tqdm(range(n)):
-                    
+                    data_synthesizer = DataSynthesizer(epsilon_priv, epsilon_fair)
+
 
                     # Record settings used
                     self.results_dict["Linear epsilon (privacy)"].append(linear_epsilon_priv)
