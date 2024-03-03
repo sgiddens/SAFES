@@ -96,6 +96,7 @@ class DataSynthesizer():
         return df[self.required_cols]
 
     def synthesize_DP_fair_df(self, df):
+        check_missing_cols_flag = False
         # Define columns necessary for synthetic data
         if self.epsilon_DP is not None or self.epsilon_fair is not None:
             self.set_required_cols(df)

@@ -1,8 +1,8 @@
 import argparse
 import logging
 logging.basicConfig(level=logging.ERROR)
-import warnings
-warnings.filterwarnings("ignore")
+# import warnings
+# warnings.filterwarnings("ignore")
 
 import numpy as np
 
@@ -80,8 +80,8 @@ def main():
             print("Chosen dataset not supported for synthesizing.")
     elif args.run_simulations:
         warm_start_file = None
-        linear_epsilons_priv = np.linspace(-1, 1, 7)
-        epsilons_fair = [0.025, 0.05, 0.1]
+        linear_epsilons_priv = [None] #+ list(np.linspace(-1, 1, 7))
+        epsilons_fair = [None]#, 0.025, 0.05, 0.1]
         dpfair_eval = DPFairEvaluator(args.dataset, 
                                       warm_start_file=warm_start_file)
         dpfair_eval.simulation_pipeline(linear_epsilons_priv,
