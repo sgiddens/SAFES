@@ -178,8 +178,22 @@ class DPFairEvaluator():
                 out_dict[f"{metric.__name__} (difference {prot_attr})"] = met_unpriv - met_priv
         return out_dict
 
-    def evaluate_model_fairness(self):
-        pass
+    def evaluate_model_fairness(self, y_test, y_pred, X_test):
+        out_dict = {}
+        if self.comb_prot_attr:
+            X_test = self.create_comb_prot_attr_column(X_test)
+        for metric in self.model_fairness_metrics:
+            for prot_attr, priv_classes in zip(
+                self.protected_attribute_names_eval,
+                self.privileged_classes_eval):
+                X_test[prot_attr] = utils.convert_categorical_series_to_binary(
+                    X_test[prot_attr], priv_classes)
+                y_test = y_test.set_axis(X_test[prot_attr])
+                out_dict[metric.__name__] = metric(y_test, y_pred, 
+                                                   prot_attr=prot_attr,
+                                                   priv_group=1,
+                                                   pos_label=1)
+        return out_dict
 
     def simulation_pipeline(self, linear_epsilons_priv,
                             epsilons_fair, n_repeats=30, 
@@ -238,6 +252,8 @@ class DPFairEvaluator():
                     X_train_DPfair, y_train_DPfair = utils.df_to_Xy(
                         df_train_DPfair, self.y_label)
                     X_test, y_test = utils.df_to_Xy(df_test, self.y_label)
+                    y_test = utils.convert_categorical_series_to_binary(
+                        y_test, self.favorable_classes)
                     for model in self.models:
                         single_sim_dict["Model"] = type(model).__name__
                         model.fit(X_train_DPfair, y_train_DPfair)
@@ -248,7 +264,7 @@ class DPFairEvaluator():
                             y_test.copy(), y_pred, X_test.copy()
                         ))
                         single_sim_dict.update(self.evaluate_model_fairness(
-
+                            y_test.copy(), y_pred, X_test.copy()
                         ))
 
                     
