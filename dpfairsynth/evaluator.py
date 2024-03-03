@@ -40,6 +40,7 @@ class DPFairEvaluator():
                  ):
         # Load and store train/test dataframes
         if dataset=="adult":
+            self.dataset = dataset
             df, domain_dict = adult_preprocessing.load_preprocessed_adult_data()
             # Define settings
             (self.DP_settings_dict, 
@@ -288,7 +289,7 @@ class DPFairEvaluator():
                 print(f"Time passed: {h} hours, {m} minutes, and {s} seconds")
 
                 # Save incomplete results
-                self.save_results(results_save_path + "incomplete/")
+                self.save_results(results_save_path + self.dataset + "/incomplete/")
 
         # Save complete results
-        self.save_results(results_save_path + "complete/")
+        self.save_results(results_save_path + self.dataset + "/complete/")

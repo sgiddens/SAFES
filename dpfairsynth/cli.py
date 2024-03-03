@@ -4,8 +4,11 @@ logging.basicConfig(level=logging.ERROR)
 import warnings
 warnings.filterwarnings("ignore")
 
+import numpy as np
+
 import adult_preprocessing
 import adult_synthesizing
+from evaluator import DPFairEvaluator
 
 
 def create_parser():
@@ -29,10 +32,16 @@ def create_parser():
     )
 
     parser.add_argument(
-        '--synthesize-data',
+        "--synthesize-data",
         action="store_true",
         help="Synthesize a DPFair dataset as indicated by the "\
              "--dataset, --epsilon_DP, and --epsilon_fair flags."
+    )
+
+    parser.add_argument(
+        "--run-simulations",
+        action="store_true",
+        help="Run simulations to evaluate the DPFair data synthesis approach."
     )
 
     parser.add_argument(
@@ -66,8 +75,16 @@ def main():
             df_synth = adult_synthesizing.synthesizing_pipeline(args.epsilon_DP,
                                                                 args.epsilon_fair)
             print(df_synth.head())
-            # df_synth.to_csv("simulation_results/DPfair.csv", index=False)
+            # df_synth.to_csv("synthesized_datasets/DPfair.csv", index=False)
         else:
             print("Chosen dataset not supported for synthesizing.")
+    elif args.run_simulations:
+        warm_start_file = None
+        linear_epsilons_priv = np.linspace(-1, 1, 7)
+        epsilons_fair = [0.025, 0.05, 0.1]
+        dpfair_eval = DPFairEvaluator(args.dataset, 
+                                      warm_start_file=warm_start_file)
+        dpfair_eval.simulation_pipeline(linear_epsilons_priv,
+                                        epsilons_fair)
     else:
         print("No valid command line argument present.")
