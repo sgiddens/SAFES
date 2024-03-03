@@ -1,5 +1,7 @@
 import time
+from datetime import datetime
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
@@ -34,6 +36,7 @@ class DPFairEvaluator():
                      average_odds_difference,
                  ],
                  random_state=50,
+                 warm_start_file=None,
                  ):
         # Load and store train/test dataframes
         if dataset=="adult":
@@ -72,7 +75,14 @@ class DPFairEvaluator():
         self.model_utility_metrics = model_utility_metrics
 
         # Initialize results dictionary
-        self.reset_results_dict()
+        if warm_start_file:
+            self.load_results_dict(warm_start_file)
+        else:
+            self.reset_results_dict()
+
+    def load_results_dict(self, warm_start_file):
+        df = pd.read_csv(warm_start_file)
+        self.results_dict = df.to_dict(orient='list')
 
     def reset_results_dict(self):
         results_dict = {
@@ -118,8 +128,10 @@ class DPFairEvaluator():
         for k in self.results_dict.keys():
             self.results_dict[k].append(new_results[k])
 
-    def save_results(self):
-        pass
+    def save_results(self, save_path):
+        df = pd.DataFrame(self.results_dict)
+        filename = f"simulations_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
+        df.to_csv(save_path + filename, index=False)
 
     def create_comb_prot_attr_column(self, df):
         if self.comb_prot_attr is None:
@@ -197,7 +209,7 @@ class DPFairEvaluator():
 
     def simulation_pipeline(self, linear_epsilons_priv,
                             epsilons_fair, n_repeats=30, 
-                            results_path="simulation_results/"):
+                            results_save_path="simulation_results/"):
         SIMULATION_START = time.time()
         for epsilon_fair in epsilons_fair:
             for linear_epsilon_priv in linear_epsilons_priv:
@@ -235,6 +247,7 @@ class DPFairEvaluator():
                     single_sim_dict["Epsilon (privacy)"] = epsilon_priv
                     single_sim_dict["Epsilon (fairness)"] = epsilon_fair
                     single_sim_dict["Dataset"] = dataset_str
+
                     # Record dataset metrics
                     single_sim_dict.update(self.evaluate_dataset_utility(
                         self.df_train.copy(),
@@ -267,8 +280,15 @@ class DPFairEvaluator():
                             y_test.copy(), y_pred, X_test.copy()
                         ))
 
-                    
-
-
-
+                    # Update results
                     self.update_results_dict(single_sim_dict)
+
+                # Print time passed
+                h, m, s = utils.get_time_passed(SIMULATION_START)
+                print(f"Time passed: {h} hours, {m} minutes, and {s} seconds")
+
+                # Save incomplete results
+                self.save_results(results_save_path + "incomplete/")
+
+        # Save complete results
+        self.save_results(results_save_path + "complete/")
