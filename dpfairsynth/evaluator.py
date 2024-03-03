@@ -1,4 +1,5 @@
 import time
+import numpy as np
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
@@ -123,27 +124,38 @@ class DPFairEvaluator():
                 out_dict[metric.__name__] = metric(df_orig, df_synth)
         return out_dict
     
-    # TODO: Streamline this
     def evaluate_dataset_fairness(self, df_synth):
         out_dict = {}
         for metric in self.dataset_fairness_metrics:
             if metric.__name__=="mean_outcome_difference":
+                protected_attribute_names = list(self.protected_attribute_names)
+                privileged_classes = list(self.privileged_classes)
+                if len(self.protected_attribute_names)>0:
+                    comb_prot_attr = '*'.join(self.protected_attribute_names)
+                    df_synth[comb_prot_attr] = np.prod([np.where(
+                        df_synth[attr].isin(priv_class), 1, 0) 
+                        for attr, priv_class in zip(self.protected_attribute_names,
+                                                    self.privileged_classes)
+                    ], axis=0)
+                    protected_attribute_names.append(comb_prot_attr)
+                    privileged_classes.append([1])
                 for prot_attr, priv_classes in zip(
-                    self.protected_attribute_names, self.privileged_classes):
+                    protected_attribute_names, privileged_classes):
                     out_dict[f"{metric.__name__} ({prot_attr})"] = metric(
                         df_synth, self.y_label, self.favorable_classes,
                         prot_attr, priv_classes)
-                if len(self.protected_attribute_names)>1:
-                    out_dict[f"{metric.__name__} "\
-                    f"({'*'.join(self.protected_attribute_names)})"] = metric(
-                        df_synth, self.y_label, self.favorable_classes,
-                        self.protected_attribute_names, self.privileged_classes)
             else:
                 out_dict[metric.__name__] = metric(df_synth, self.y_label,
                                                    self.favorable_classes,
                                                    self.protected_attribute_names,
                                                    self.privileged_classes)
         return out_dict
+    
+    def evaluate_model_utility(self):
+        pass
+
+    def evaluate_model_fairness(self):
+        pass
 
     def simulation_pipeline(self, linear_epsilons_priv,
                             epsilons_fair, n_repeats=30, 
@@ -171,27 +183,36 @@ class DPFairEvaluator():
                     dataset_str = "DPFair"
                 print(msg)
                 for _ in tqdm(range(n)):
-                    single_sim_dict = dict()
-                    # Record settings used
-                    single_sim_dict["Linear epsilon (privacy)"] = linear_epsilon_priv
-                    single_sim_dict["Epsilon (privacy)"] = epsilon_priv
-                    single_sim_dict["Epsilon (fairness)"] = epsilon_fair
-                    single_sim_dict["Dataset"] = dataset_str
-
                     ds = DataSynthesizer(epsilon_priv, epsilon_fair,
-                                                       self.DP_settings_dict,
-                                                       self.fair_settings_dict,
-                                                       self.misc_settings_dict)
+                                         self.DP_settings_dict,
+                                         self.fair_settings_dict,
+                                         self.misc_settings_dict)
                     df_train_DPfair = ds.synthesize_DP_fair_df(self.df_train)
                     if df_train_DPfair is None:
                         continue
 
+                    # Record settings used
+                    single_sim_dict = dict()
+                    single_sim_dict["Linear epsilon (privacy)"] = linear_epsilon_priv
+                    single_sim_dict["Epsilon (privacy)"] = epsilon_priv
+                    single_sim_dict["Epsilon (fairness)"] = epsilon_fair
+                    single_sim_dict["Dataset"] = dataset_str
+                    # Record dataset metrics
                     single_sim_dict.update(self.evaluate_dataset_utility(
                         self.df_train.copy(),
                         df_train_DPfair.copy()))
                     single_sim_dict.update(self.evaluate_dataset_fairness(
                         df_train_DPfair.copy()
                     ))
+
+                    # Train and evaluate models
+                    X_train_DPfair, y_train_DPfair = utils.df_to_Xy(
+                        df_train_DPfair, self.y_label)
+                    for model in self.models:
+                        single_sim_dict["Model"] = type(model).__name__
+                        model.fit(X_train_DPfair, y_train_DPfair)
+                        y_pred = model.predict(X_test)
+                    # Record model metrics
                     self.evaluate_model_utility()
                     self.evaluate_model_fairness()
 

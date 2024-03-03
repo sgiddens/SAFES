@@ -63,8 +63,10 @@ def main():
             print("Chosen dataset not supported for preprocessing.")
     elif args.synthesize_data:
         if args.dataset=='adult':
-            print(adult_synthesizing.synthesizing_pipeline(args.epsilon_DP,
-                                                     args.epsilon_fair))
+            df_synth = adult_synthesizing.synthesizing_pipeline(args.epsilon_DP,
+                                                                args.epsilon_fair)
+            print(df_synth.head())
+            # df_synth.to_csv("simulation_results/DPfair.csv", index=False)
         else:
             print("Chosen dataset not supported for synthesizing.")
     else:

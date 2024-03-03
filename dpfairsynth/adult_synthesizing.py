@@ -9,8 +9,14 @@ def define_settings():
     fair_settings_dict={
         "y_label": "income>50K",
         "favorable_classes": [1],
-        "protected_attribute_names": ['race-reduced'],
-        "privileged_classes": [[1]],
+        "protected_attribute_names": [
+            'race-reduced', 
+            'sex-num',
+        ],
+        "privileged_classes": [
+            [1],
+            [1],
+        ],
         "categorical_features": [
             'age-decade',
             'education-reduced'
@@ -23,7 +29,10 @@ def define_settings():
             'income>50K',
         ],
         "metadata": {'label_maps': [{1.0: '>50K', 0.0: '<=50K'}],
-                    'protected_attribute_maps': [{1.0: 'White', 0.0: 'Non-white'}]},
+                    'protected_attribute_maps': [
+                        {1.0: 'White', 0.0: 'Non-white'},
+                        {1.0: 'Male', 0.0: 'Female'},
+                    ]},
         "custom_distortion": 'adult',
         "verbose": False,
     }

@@ -79,13 +79,7 @@ class DataSynthesizer():
             df = self.aif360_conversion(df)
         
         # Convert to AIF360 StandardDataset and back to dataframe
-        std_dataset = StandardDataset(df.copy(), label_name=self.y_label, 
-                favorable_classes=self.favorable_classes,
-                protected_attribute_names=self.protected_attribute_names,
-                privileged_classes=self.privileged_classes,
-                categorical_features=self.categorical_features,
-                features_to_keep=self.features_to_keep, 
-                metadata=self.metadata)
+        std_dataset = self.df_to_standard_dataset(df.copy())
         df = std_dataset.convert_to_dataframe()[0]
         self.required_cols = df.columns
 
@@ -104,7 +98,9 @@ class DataSynthesizer():
 
     def synthesize_DP_fair_df(self, df):
         # Define columns necessary for synthetic data
-        self.set_required_cols(df)
+        if self.epsilon_DP is not None or self.epsilon_fair is not None:
+            self.set_required_cols(df)
+            check_missing_cols_flag = True
 
         # DP data synthesis
         if self.epsilon_DP:
@@ -118,11 +114,12 @@ class DataSynthesizer():
         std_dataset = self.df_to_standard_dataset(df)
 
         # Ensure no missing columns
-        tmp_df = std_dataset.convert_to_dataframe()[0]
-        missing_cols = set(self.required_cols) - set(tmp_df.columns)
-        if missing_cols:
-            tmp_df = self.correct_missing_cols(tmp_df, missing_cols)
-            std_dataset = self.df_to_standard_dataset(tmp_df)
+        if check_missing_cols_flag:
+            tmp_df = std_dataset.convert_to_dataframe()[0]
+            missing_cols = set(self.required_cols) - set(tmp_df.columns)
+            if missing_cols:
+                tmp_df = self.correct_missing_cols(tmp_df, missing_cols)
+                std_dataset = self.df_to_standard_dataset(tmp_df)
 
         # Fairness transformation
         if self.epsilon_fair:
@@ -137,9 +134,10 @@ class DataSynthesizer():
         df = std_dataset.convert_to_dataframe()[0]
 
         # Ensure no missing columns again
-        missing_cols = set(self.required_cols) - set(df.columns)
-        if missing_cols:
-            df = self.correct_missing_cols(df, missing_cols)
+        if check_missing_cols_flag:
+            missing_cols = set(self.required_cols) - set(df.columns)
+            if missing_cols:
+                df = self.correct_missing_cols(df, missing_cols)
 
         return df
 
