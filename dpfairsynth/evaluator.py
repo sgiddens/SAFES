@@ -47,8 +47,16 @@ class DPFairEvaluator():
             raise ValueError("dataset value not currently supported.")
         self.y_label = self.fair_settings_dict["y_label"]
         self.favorable_classes = self.fair_settings_dict["favorable_classes"]
-        self.protected_attribute_names = self.fair_settings_dict["protected_attribute_names"]
-        self.privileged_classes = self.fair_settings_dict["privileged_classes"]
+        self.protected_attribute_names_synth = self.fair_settings_dict["protected_attribute_names"]
+        self.protected_attribute_names_eval = self.protected_attribute_names_synth
+        self.privileged_classes_synth = self.fair_settings_dict["privileged_classes"]
+        self.privileged_classes_eval = self.privileged_classes_synth
+        if len(self.protected_attribute_names_synth)>1:
+            self.comb_prot_attr = '*'.join(self.protected_attribute_names_synth)
+            self.protected_attribute_names_eval.append(self.comb_prot_attr)
+            self.privileged_classes_eval.append([1])
+        else:
+            self.comb_prot_attr = None
 
         X, y = utils.df_to_Xy(df, self.y_label)
         (X_train, X_test, 
@@ -83,23 +91,21 @@ class DPFairEvaluator():
 
         for metric in self.dataset_fairness_metrics:
             if metric.__name__=="mean_outcome_difference":
-                for prot_attr in self.protected_attribute_names:
+                for prot_attr in self.protected_attribute_names_eval:
                     results_dict.update({f"{metric.__name__} "\
                                          f"({prot_attr})": []})
-                if len(self.protected_attribute_names)>1:
-                    results_dict.update({f"{metric.__name__} "\
-                                         f"({'*'.join(self.protected_attribute_names)})": []})
             else:
                 results_dict.update({f"{metric.__name__}": []})
 
-        results_dict.update({f"{metric.__name__} (overall)": []
-                            for metric in self.model_utility_metrics})
-        results_dict.update({f"{metric.__name__} (privileged)": []
-                            for metric in self.model_utility_metrics})
-        results_dict.update({f"{metric.__name__} (unprivileged)": []
-                            for metric in self.model_utility_metrics})
-        results_dict.update({f"{metric.__name__} (difference)": []
-                            for metric in self.model_utility_metrics})
+        for metric in self.model_utility_metrics:
+            results_dict.update({f"{metric.__name__} (overall)": []})
+            results_dict.update({f"{metric.__name__} (privileged {prot_attr})": []
+                                 for prot_attr in self.protected_attribute_names_eval})
+            results_dict.update({f"{metric.__name__} (unprivileged {prot_attr})": []
+                                 for prot_attr in self.protected_attribute_names_eval})
+            results_dict.update({f"{metric.__name__} (difference {prot_attr})": []
+                                 for prot_attr in self.protected_attribute_names_eval})
+            
         results_dict.update({f"{metric.__name__}": []
                              for metric in self.model_fairness_metrics})
         self.results_dict = results_dict
@@ -115,6 +121,16 @@ class DPFairEvaluator():
     def save_results(self):
         pass
 
+    def create_comb_prot_attr_column(self, df):
+        if self.comb_prot_attr is None:
+            raise ValueError("comb_prot_attr attribute cannot be None")
+        df[self.comb_prot_attr] = np.prod([np.where(
+            df[attr].isin(priv_class), 1, 0) 
+            for attr, priv_class in zip(self.protected_attribute_names_synth,
+                                         self.privileged_classes_synth)], 
+                                         axis=0)
+        return df
+
     def evaluate_dataset_utility(self, df_orig, df_synth):
         out_dict = {}
         for metric in self.dataset_utility_metrics:
@@ -128,31 +144,39 @@ class DPFairEvaluator():
         out_dict = {}
         for metric in self.dataset_fairness_metrics:
             if metric.__name__=="mean_outcome_difference":
-                protected_attribute_names = list(self.protected_attribute_names)
-                privileged_classes = list(self.privileged_classes)
-                if len(self.protected_attribute_names)>0:
-                    comb_prot_attr = '*'.join(self.protected_attribute_names)
-                    df_synth[comb_prot_attr] = np.prod([np.where(
-                        df_synth[attr].isin(priv_class), 1, 0) 
-                        for attr, priv_class in zip(self.protected_attribute_names,
-                                                    self.privileged_classes)
-                    ], axis=0)
-                    protected_attribute_names.append(comb_prot_attr)
-                    privileged_classes.append([1])
+                if self.comb_prot_attr:
+                    df_synth = self.create_comb_prot_attr_column(df_synth)
                 for prot_attr, priv_classes in zip(
-                    protected_attribute_names, privileged_classes):
+                    self.protected_attribute_names_eval, 
+                    self.privileged_classes_eval):
                     out_dict[f"{metric.__name__} ({prot_attr})"] = metric(
                         df_synth, self.y_label, self.favorable_classes,
                         prot_attr, priv_classes)
-            else:
+            else: # Default, but likely the above format will end up being used
                 out_dict[metric.__name__] = metric(df_synth, self.y_label,
                                                    self.favorable_classes,
-                                                   self.protected_attribute_names,
-                                                   self.privileged_classes)
+                                                   self.protected_attribute_names_eval,
+                                                   self.privileged_classes_eval)
         return out_dict
     
-    def evaluate_model_utility(self):
-        pass
+    def evaluate_model_utility(self, y_test, y_pred, X_test):
+        out_dict = {}
+        if self.comb_prot_attr:
+            X_test = self.create_comb_prot_attr_column(X_test)
+        for metric in self.model_utility_metrics:
+            for prot_attr, priv_classes in zip(
+                self.protected_attribute_names_eval,
+                self.privileged_classes_eval):
+                y_test = y_test.set_axis(X_test[prot_attr])
+                priv_idx = y_test.index.isin(priv_classes)
+
+                out_dict[f"{metric.__name__} (overall)"] = metric(y_test, y_pred)
+                met_priv = metric(y_test[priv_idx], y_pred[priv_idx])
+                out_dict[f"{metric.__name__} (privileged {prot_attr})"] = met_priv
+                met_unpriv = metric(y_test[~priv_idx], y_pred[~priv_idx])
+                out_dict[f"{metric.__name__} (unprivileged {prot_attr})"] = met_unpriv
+                out_dict[f"{metric.__name__} (difference {prot_attr})"] = met_unpriv - met_priv
+        return out_dict
 
     def evaluate_model_fairness(self):
         pass
@@ -206,15 +230,26 @@ class DPFairEvaluator():
                     ))
 
                     # Train and evaluate models
+                    ds_test = DataSynthesizer(None, None, # No DP/fairness for test data
+                                              self.DP_settings_dict,
+                                              self.fair_settings_dict,
+                                              self.misc_settings_dict)
+                    df_test = ds_test.synthesize_DP_fair_df(self.df_test)
                     X_train_DPfair, y_train_DPfair = utils.df_to_Xy(
                         df_train_DPfair, self.y_label)
+                    X_test, y_test = utils.df_to_Xy(df_test, self.y_label)
                     for model in self.models:
                         single_sim_dict["Model"] = type(model).__name__
                         model.fit(X_train_DPfair, y_train_DPfair)
                         y_pred = model.predict(X_test)
-                    # Record model metrics
-                    self.evaluate_model_utility()
-                    self.evaluate_model_fairness()
+
+                        # Record model metrics
+                        single_sim_dict.update(self.evaluate_model_utility(
+                            y_test.copy(), y_pred, X_test.copy()
+                        ))
+                        single_sim_dict.update(self.evaluate_model_fairness(
+
+                        ))
 
                     
 

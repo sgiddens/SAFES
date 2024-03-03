@@ -73,7 +73,6 @@ class DataSynthesizer():
         if misc_settings_dict["aif360_conversion"]=='adult':
             self.aif360_conversion = adult_preprocessing.custom_aif360_conversion
 
-
     def set_required_cols(self, df):
         if self.aif360_conversion:
             df = self.aif360_conversion(df)

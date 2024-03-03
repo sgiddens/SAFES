@@ -6,23 +6,13 @@ from scipy.stats import ks_2samp
 
 def mean_outcome_difference(df, y_label, favorable_classes,
                             prot_attr, privileged_classes):
-    favorable_class = 1
-    unfavorable_class = 0
-    privileged_class = 1
-    unprivileged_class = 0
-
-    # Define y as binary
     y = df[y_label]
-    y.replace(favorable_classes, favorable_class, inplace=True)
-    y[y!=favorable_class] = unfavorable_class
-
-    # Define privileged attribute as binary
     A = df[prot_attr]
-    A.replace(privileged_classes, privileged_class, inplace=True)
-    A[A!=privileged_class] = unprivileged_class
     
-    unprivileged_group_mean = (y[A!=privileged_class]==favorable_class).mean()
-    privileged_group_mean = (y[A==privileged_class]==favorable_class).mean()
+    unprivileged_group_mean = (y[~A.isin(privileged_classes)].isin(
+        favorable_classes)).mean()
+    privileged_group_mean = (y[A.isin(privileged_classes)].isin(
+        favorable_classes)).mean()
     return unprivileged_group_mean - privileged_group_mean
 
 def KS_test(df_real, df_synth):
