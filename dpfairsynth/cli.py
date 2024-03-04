@@ -84,11 +84,8 @@ def main():
         epsilons_fair = [None, 0.05] # [None, 0.025, 0.05, 0.1]
         dpfair_eval = DPFairEvaluator(args.dataset, 
                                       warm_start_file=warm_start_file)
-        # print(dpfair_eval.protected_attribute_names_synth)
-        # print(dpfair_eval.protected_attribute_names_eval)
         out = dpfair_eval.simulation_pipeline(linear_epsilons_priv,
                                         epsilons_fair, n_repeats=2)
-        # print(dpfair_eval.df_train_aif360_formatted)
         print(out)
     else:
         print("No valid command line argument present.")

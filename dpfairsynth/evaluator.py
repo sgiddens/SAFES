@@ -51,16 +51,11 @@ class DPFairEvaluator():
             raise ValueError("dataset value not currently supported.")
         self.y_label = self.fair_settings_dict["y_label"]
         self.favorable_classes = self.fair_settings_dict["favorable_classes"]
-        self.protected_attribute_names_synth = self.fair_settings_dict["protected_attribute_names"]
-        self.protected_attribute_names_eval = self.protected_attribute_names_synth.copy()
-        self.privileged_classes_synth = self.fair_settings_dict["privileged_classes"]
-        self.privileged_classes_eval = self.privileged_classes_synth.copy()
-        if len(self.protected_attribute_names_synth)>1:
-            self.comb_prot_attr = '*'.join(self.protected_attribute_names_synth)
-            self.protected_attribute_names_eval.append(self.comb_prot_attr)
-            self.privileged_classes_eval.append([1])
-        else:
-            self.comb_prot_attr = None
+
+        self.protected_attribute_names_eval = self.misc_settings_dict["protected_attribute_names_eval"]
+        self.privileged_classes_eval = self.misc_settings_dict["privileged_classes_eval"]
+        self.comb_prot_attr_cols = [col for col in self.protected_attribute_names_eval
+                                    if '*' in col]
 
         X, y = utils.df_to_Xy(df, self.y_label)
         (X_train, X_test, 
@@ -136,15 +131,28 @@ class DPFairEvaluator():
         filename = f"simulations_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
         df.to_csv(save_path + filename, index=False)
 
-    def create_comb_prot_attr_column(self, df):
-        if self.comb_prot_attr is None:
-            raise ValueError("comb_prot_attr attribute cannot be None")
-        df[self.comb_prot_attr] = np.prod([np.where(
-            df[attr].isin(priv_class), 1, 0) 
-            for attr, priv_class in zip(self.protected_attribute_names_synth,
-                                         self.privileged_classes_synth)], 
-                                         axis=0)
+    def create_comb_prot_attr_columns(self, df):
+        if self.comb_prot_attr_cols:
+            for col in self.comb_prot_attr_cols:
+                # Separate into individual attributes
+                prot_attrs = col.split('*')
+                # Get privileged classes corresponding to individual attributes
+                priv_classes = [self.privileged_classes_eval[
+                    self.protected_attribute_names_eval.index(attr)] 
+                    for attr in prot_attrs]
+                # Create combined column
+                df[col] = np.prod([np.where(
+                    df[attr].isin(priv_class), 1, 0) 
+                    for attr, priv_class in zip(prot_attrs, priv_classes)], axis=0)
         return df
+        # if self.comb_prot_attr is None:
+        #     raise ValueError("comb_prot_attr attribute cannot be None")
+        # df[self.comb_prot_attr] = np.prod([np.where(
+        #     df[attr].isin(priv_class), 1, 0) 
+        #     for attr, priv_class in zip(self.protected_attribute_names_synth,
+        #                                  self.privileged_classes_synth)], 
+        #                                  axis=0)
+        # return df
     
     def format_df_aif360(self, df):
         ds_format = DataSynthesizer(None, None, # No DP/fairness for formatting
@@ -166,8 +174,7 @@ class DPFairEvaluator():
         out_dict = {}
         for metric in self.dataset_fairness_metrics:
             if metric.__name__=="mean_outcome_difference":
-                if self.comb_prot_attr:
-                    df_synth = self.create_comb_prot_attr_column(df_synth)
+                df_synth = self.create_comb_prot_attr_columns(df_synth)
                 for prot_attr, priv_classes in zip(
                     self.protected_attribute_names_eval, 
                     self.privileged_classes_eval):
@@ -183,8 +190,7 @@ class DPFairEvaluator():
     
     def evaluate_model_utility(self, y_test, y_pred, X_test):
         out_dict = {}
-        if self.comb_prot_attr:
-            X_test = self.create_comb_prot_attr_column(X_test)
+        X_test = self.create_comb_prot_attr_columns(X_test)
         for metric in self.model_utility_metrics:
             for prot_attr, priv_classes in zip(
                 self.protected_attribute_names_eval,
@@ -202,8 +208,7 @@ class DPFairEvaluator():
 
     def evaluate_model_fairness(self, y_test, y_pred, X_test):
         out_dict = {}
-        if self.comb_prot_attr:
-            X_test = self.create_comb_prot_attr_column(X_test)
+        X_test = self.create_comb_prot_attr_columns(X_test)
         for metric in self.model_fairness_metrics:
             for prot_attr, priv_classes in zip(
                 self.protected_attribute_names_eval,
@@ -250,7 +255,6 @@ class DPFairEvaluator():
                                          self.fair_settings_dict,
                                          self.misc_settings_dict)
                     df_train_DPfair = ds.synthesize_DP_fair_df(self.df_train)
-                    # return df_train_DPfair
                     if df_train_DPfair is None: # synthesis failed
                         continue
 
@@ -265,11 +269,9 @@ class DPFairEvaluator():
                     single_sim_dict.update(self.evaluate_dataset_utility(
                         self.df_train_aif360_formatted.copy(),
                         df_train_DPfair.copy()))
-                    # return single_sim_dict
                     single_sim_dict.update(self.evaluate_dataset_fairness(
                         df_train_DPfair.copy()
                     ))
-                    # return single_sim_dict
 
                     # Train and evaluate models
                     X_train_DPfair, y_train_DPfair = utils.df_to_Xy(
@@ -287,11 +289,9 @@ class DPFairEvaluator():
                         single_sim_dict.update(self.evaluate_model_utility(
                             y_test.copy(), y_pred, X_test.copy()
                         ))
-                        # return single_sim_dict
                         single_sim_dict.update(self.evaluate_model_fairness(
                             y_test.copy(), y_pred, X_test.copy()
                         ))
-                        # return single_sim_dict
 
                     # Update results
                     self.update_results_dict(single_sim_dict)
