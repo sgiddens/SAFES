@@ -39,6 +39,11 @@ def define_settings():
 
     misc_settings_dict={
         "aif360_conversion": 'adult', # Can also be a callable function or None
+        "protected_attribute_names_eval": [
+            'race-reduced',
+            'sex-num',
+            'race-reduced*sex-num',
+        ]
     }
 
     return DP_settings_dict, fair_settings_dict, misc_settings_dict

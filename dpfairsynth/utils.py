@@ -10,7 +10,7 @@ def Xy_to_df(X, y):
 
 def convert_categorical_series_to_binary(series, one_categories):
     series.replace(one_categories, 1, inplace=True)
-    series[series!=1] = 0
+    series.replace(series[series!=1].unique(), 0, inplace=True)
     return series
 
 def get_time_passed(start):

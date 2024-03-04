@@ -52,9 +52,9 @@ class DPFairEvaluator():
         self.y_label = self.fair_settings_dict["y_label"]
         self.favorable_classes = self.fair_settings_dict["favorable_classes"]
         self.protected_attribute_names_synth = self.fair_settings_dict["protected_attribute_names"]
-        self.protected_attribute_names_eval = self.protected_attribute_names_synth
+        self.protected_attribute_names_eval = self.protected_attribute_names_synth.copy()
         self.privileged_classes_synth = self.fair_settings_dict["privileged_classes"]
-        self.privileged_classes_eval = self.privileged_classes_synth
+        self.privileged_classes_eval = self.privileged_classes_synth.copy()
         if len(self.protected_attribute_names_synth)>1:
             self.comb_prot_attr = '*'.join(self.protected_attribute_names_synth)
             self.protected_attribute_names_eval.append(self.comb_prot_attr)
@@ -67,6 +67,8 @@ class DPFairEvaluator():
          y_train, y_test) = train_test_split(X, y, random_state=random_state)
         self.df_train = utils.Xy_to_df(X_train, y_train)
         self.df_test = utils.Xy_to_df(X_test, y_test)
+        self.df_train_aif360_formatted = self.format_df_aif360(self.df_train.copy())
+        self.df_test_aif360_formatted = self.format_df_aif360(self.df_test.copy())
 
         self.models = models
 
@@ -122,7 +124,7 @@ class DPFairEvaluator():
         self.results_dict = results_dict
 
     def update_results_dict(self, new_results):
-        if set(self.results_dict.keys()!=set(new_results.keys())):
+        if set(self.results_dict.keys())!=set(new_results.keys()):
             print("Keys in new results dictionary don't match full results "\
                   "dictionary. Full results dictionary was not updated.")
             return
@@ -143,6 +145,13 @@ class DPFairEvaluator():
                                          self.privileged_classes_synth)], 
                                          axis=0)
         return df
+    
+    def format_df_aif360(self, df):
+        ds_format = DataSynthesizer(None, None, # No DP/fairness for formatting
+                                    self.DP_settings_dict,
+                                    self.fair_settings_dict,
+                                    self.misc_settings_dict)
+        return ds_format.synthesize_DP_fair_df(df)
 
     def evaluate_dataset_utility(self, df_orig, df_synth):
         out_dict = {}
@@ -210,7 +219,8 @@ class DPFairEvaluator():
 
     def simulation_pipeline(self, linear_epsilons_priv,
                             epsilons_fair, n_repeats=30, 
-                            results_save_path="simulation_results/"):
+                            results_save_path="simulation_results/",
+                            save_incomplete=False):
         SIMULATION_START = time.time()
         for epsilon_fair in epsilons_fair:
             for linear_epsilon_priv in linear_epsilons_priv:
@@ -225,13 +235,14 @@ class DPFairEvaluator():
                           f"datasets"
                     dataset_str = "DP"
                 elif epsilon_priv is None:
-                    msg = f"Simulating n={n} repeats using {epsilon_fair:.2}-DP "\
+                    msg = f"Simulating n={n} repeats using {epsilon_fair:.2}-fair "\
                           f"datasets"
                     dataset_str = "Fair"
                 else:
                     msg = f"Simulating n={n} repeats using {epsilon_priv:.2}-DP, "\
                           f"{epsilon_fair:.2}-fair datasets"
                     dataset_str = "DPFair"
+                print("###############################")
                 print(msg)
                 for _ in tqdm(range(n)):
                     ds = DataSynthesizer(epsilon_priv, epsilon_fair,
@@ -239,7 +250,8 @@ class DPFairEvaluator():
                                          self.fair_settings_dict,
                                          self.misc_settings_dict)
                     df_train_DPfair = ds.synthesize_DP_fair_df(self.df_train)
-                    if df_train_DPfair is None:
+                    # return df_train_DPfair
+                    if df_train_DPfair is None: # synthesis failed
                         continue
 
                     # Record settings used
@@ -251,21 +263,19 @@ class DPFairEvaluator():
 
                     # Record dataset metrics
                     single_sim_dict.update(self.evaluate_dataset_utility(
-                        self.df_train.copy(),
+                        self.df_train_aif360_formatted.copy(),
                         df_train_DPfair.copy()))
+                    # return single_sim_dict
                     single_sim_dict.update(self.evaluate_dataset_fairness(
                         df_train_DPfair.copy()
                     ))
+                    # return single_sim_dict
 
                     # Train and evaluate models
-                    ds_test = DataSynthesizer(None, None, # No DP/fairness for test data
-                                              self.DP_settings_dict,
-                                              self.fair_settings_dict,
-                                              self.misc_settings_dict)
-                    df_test = ds_test.synthesize_DP_fair_df(self.df_test)
                     X_train_DPfair, y_train_DPfair = utils.df_to_Xy(
                         df_train_DPfair, self.y_label)
-                    X_test, y_test = utils.df_to_Xy(df_test, self.y_label)
+                    X_test, y_test = utils.df_to_Xy(self.df_test_aif360_formatted,
+                                                    self.y_label)
                     y_test = utils.convert_categorical_series_to_binary(
                         y_test, self.favorable_classes)
                     for model in self.models:
@@ -277,19 +287,22 @@ class DPFairEvaluator():
                         single_sim_dict.update(self.evaluate_model_utility(
                             y_test.copy(), y_pred, X_test.copy()
                         ))
+                        # return single_sim_dict
                         single_sim_dict.update(self.evaluate_model_fairness(
                             y_test.copy(), y_pred, X_test.copy()
                         ))
+                        # return single_sim_dict
 
                     # Update results
                     self.update_results_dict(single_sim_dict)
 
                 # Print time passed
                 h, m, s = utils.get_time_passed(SIMULATION_START)
-                print(f"Time passed: {h} hours, {m} minutes, and {s} seconds")
+                print(f"Time passed: {h} hours, {m} minutes, and {s} seconds\n")
 
                 # Save incomplete results
-                self.save_results(results_save_path + self.dataset + "/incomplete/")
+                if save_incomplete:
+                    self.save_results(results_save_path + self.dataset + "/incomplete/")
 
         # Save complete results
         self.save_results(results_save_path + self.dataset + "/complete/")
