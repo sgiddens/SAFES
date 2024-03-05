@@ -227,6 +227,12 @@ class DPFairEvaluator():
                             results_save_path="simulation_results/",
                             save_incomplete=False):
         SIMULATION_START = time.time()
+        # Set up test data
+        X_test, y_test = utils.df_to_Xy(self.df_test_aif360_formatted,
+                                                    self.y_label)
+        y_test = utils.convert_categorical_series_to_binary(
+            y_test, self.favorable_classes)
+        # Run simulations
         for epsilon_fair in epsilons_fair:
             for linear_epsilon_priv in linear_epsilons_priv:
                 epsilon_priv = 10**linear_epsilon_priv if linear_epsilon_priv is not None else None
@@ -254,7 +260,11 @@ class DPFairEvaluator():
                                          self.DP_settings_dict,
                                          self.fair_settings_dict,
                                          self.misc_settings_dict)
-                    df_train_DPfair = ds.synthesize_DP_fair_df(self.df_train)
+                    try:
+                        df_train_DPfair = ds.synthesize_DP_fair_df(self.df_train)
+                    except Exception as e:
+                        print("Iteration failed with exception:", e)
+                        continue
                     if df_train_DPfair is None: # synthesis failed
                         continue
 
@@ -276,10 +286,6 @@ class DPFairEvaluator():
                     # Train and evaluate models
                     X_train_DPfair, y_train_DPfair = utils.df_to_Xy(
                         df_train_DPfair, self.y_label)
-                    X_test, y_test = utils.df_to_Xy(self.df_test_aif360_formatted,
-                                                    self.y_label)
-                    y_test = utils.convert_categorical_series_to_binary(
-                        y_test, self.favorable_classes)
                     for model in self.models:
                         single_sim_dict["Model"] = type(model).__name__
                         model.fit(X_train_DPfair, y_train_DPfair)
