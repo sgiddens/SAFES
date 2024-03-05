@@ -11,11 +11,11 @@ def define_settings():
         "favorable_classes": [1],
         "protected_attribute_names": [
             'race-reduced', 
-            'sex-num',
+            # 'sex-num',
         ],
         "privileged_classes": [
             [1],
-            [1],
+            # [1],
         ],
         "categorical_features": [
             'age-decade',
@@ -31,7 +31,7 @@ def define_settings():
         "metadata": {'label_maps': [{1.0: '>50K', 0.0: '<=50K'}],
                     'protected_attribute_maps': [
                         {1.0: 'White', 0.0: 'Non-white'},
-                        {1.0: 'Male', 0.0: 'Female'},
+                        # {1.0: 'Male', 0.0: 'Female'},
                     ]},
         "custom_distortion": 'adult',
         "verbose": False,

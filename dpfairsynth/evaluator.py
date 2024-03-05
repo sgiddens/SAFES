@@ -115,8 +115,9 @@ class DPFairEvaluator():
             results_dict.update({f"{metric.__name__} (difference {prot_attr})": []
                                  for prot_attr in self.protected_attribute_names_eval})
             
-        results_dict.update({f"{metric.__name__}": []
-                             for metric in self.model_fairness_metrics})
+        for metric in self.model_fairness_metrics:
+            results_dict.update({f"{metric.__name__} ({prot_attr})": []
+                                 for prot_attr in self.protected_attribute_names_eval})
         self.results_dict = results_dict
 
     def update_results_dict(self, new_results):
@@ -218,10 +219,9 @@ class DPFairEvaluator():
                 X_test[prot_attr] = utils.convert_categorical_series_to_binary(
                     X_test[prot_attr], priv_classes)
                 y_test = y_test.set_axis(X_test[prot_attr])
-                out_dict[metric.__name__] = metric(y_test, y_pred, 
-                                                   prot_attr=prot_attr,
-                                                   priv_group=1,
-                                                   pos_label=1)
+                out_dict[f"{metric.__name__} ({prot_attr})"] = metric(
+                    y_test, y_pred, prot_attr=prot_attr,
+                    priv_group=1, pos_label=1)
         return out_dict
 
     def simulation_pipeline(self, linear_epsilons_priv,

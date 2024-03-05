@@ -86,8 +86,8 @@ def main():
         dpfair_eval = DPFairEvaluator(args.dataset, 
                                       warm_start_file=warm_start_file)
         dpfair_eval.simulation_pipeline(linear_epsilons_priv,
-                                        epsilons_fair, n_repeats=2,
-                                        save_incomplete=False)
+                                        epsilons_fair, n_repeats=30,
+                                        save_incomplete=True)
         print("Done!")
     else:
         print("No valid command line argument present.")
