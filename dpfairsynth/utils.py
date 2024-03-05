@@ -17,3 +17,7 @@ def get_time_passed(start):
     hours, remainder = divmod(time.time() - start, 3600)
     minutes, seconds = divmod(remainder, 60)
     return int(hours), int(minutes), int(seconds)
+
+def metric_uses_score(metric_name):
+    uses_score_metrics = ['roc_auc_score']
+    return metric_name in uses_score_metrics

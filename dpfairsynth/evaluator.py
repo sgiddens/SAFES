@@ -5,7 +5,7 @@ import pandas as pd
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import precision_score, accuracy_score, f1_score, recall_score
+from sklearn.metrics import precision_score, accuracy_score, f1_score, recall_score, roc_auc_score
 from aif360.sklearn.metrics import statistical_parity_difference, average_odds_difference
 
 from custom_metrics import mean_outcome_difference, KS_test
@@ -30,6 +30,7 @@ class DPFairEvaluator():
                      f1_score,
                      precision_score,
                      recall_score,
+                     roc_auc_score,
                  ],
                  model_fairness_metrics=[
                      statistical_parity_difference,
@@ -188,7 +189,7 @@ class DPFairEvaluator():
                                                    self.privileged_classes_eval)
         return out_dict
     
-    def evaluate_model_utility(self, y_test, y_pred, X_test):
+    def evaluate_model_utility(self, y_test, y_pred, y_score, X_test):
         out_dict = {}
         X_test = self.create_comb_prot_attr_columns(X_test)
         for metric in self.model_utility_metrics:
@@ -197,11 +198,12 @@ class DPFairEvaluator():
                 self.privileged_classes_eval):
                 y_test = y_test.set_axis(X_test[prot_attr])
                 priv_idx = y_test.index.isin(priv_classes)
+                y_hat = y_score if utils.metric_uses_score(metric.__name__) else y_pred
 
-                out_dict[f"{metric.__name__} (overall)"] = metric(y_test, y_pred)
-                met_priv = metric(y_test[priv_idx], y_pred[priv_idx])
+                out_dict[f"{metric.__name__} (overall)"] = metric(y_test, y_hat)
+                met_priv = metric(y_test[priv_idx], y_hat[priv_idx])
                 out_dict[f"{metric.__name__} (privileged {prot_attr})"] = met_priv
-                met_unpriv = metric(y_test[~priv_idx], y_pred[~priv_idx])
+                met_unpriv = metric(y_test[~priv_idx], y_hat[~priv_idx])
                 out_dict[f"{metric.__name__} (unprivileged {prot_attr})"] = met_unpriv
                 out_dict[f"{metric.__name__} (difference {prot_attr})"] = met_unpriv - met_priv
         return out_dict
@@ -290,10 +292,11 @@ class DPFairEvaluator():
                         single_sim_dict["Model"] = type(model).__name__
                         model.fit(X_train_DPfair, y_train_DPfair)
                         y_pred = model.predict(X_test)
+                        y_score = model.predict_proba(X_test)[:,1]
 
                         # Record model metrics
                         single_sim_dict.update(self.evaluate_model_utility(
-                            y_test.copy(), y_pred, X_test.copy()
+                            y_test.copy(), y_pred, y_score, X_test.copy()
                         ))
                         single_sim_dict.update(self.evaluate_model_fairness(
                             y_test.copy(), y_pred, X_test.copy()
