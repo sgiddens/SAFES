@@ -3,6 +3,7 @@ from scipy import sparse
 import json
 
 from mbi import FactoredInference
+from snsynth import Synthesizer
 from aif360.datasets import StandardDataset
 from aif360.algorithms.preprocessing.optim_preproc import OptimPreproc
 from aif360.algorithms.preprocessing.optim_preproc_helpers.opt_tools import OptTools
@@ -16,6 +17,8 @@ class DataSynthesizer():
     def __init__(self, epsilon_DP=None, epsilon_fair=None,
                  DP_settings_dict={
                     "domain_dict": 'adult',
+                    "use_snsynth_package": True, 
+                    "smart_noise_synthesizer": 'aim',
                     "cliques": 'all 2-way',
                 },
                 fair_settings_dict={
@@ -104,7 +107,10 @@ class DataSynthesizer():
 
         # DP data synthesis
         if self.epsilon_DP:
-            df = self.synthesize_DP_df(df)
+            if self.use_snsynth_package:
+                df = self.synthesize_DP_df_snsynth(df)
+            else:
+                df = self.synthesize_DP_df_mbi(df)
 
         # Convert df to format needed for AIF360 package
         if self.aif360_conversion:
@@ -140,8 +146,14 @@ class DataSynthesizer():
                 df = self.correct_missing_cols(df, missing_cols)
 
         return df
+    
+    def synthesize_DP_df_snsynth(self, df): # For snsynth package wrapper
+        synth = Synthesizer.create(synth=self.smart_noise_synthesizer, 
+                                   epsilon=self.epsilon_DP)#, verbose=True)
+        sample = synth.fit_sample(df)
+        return sample
 
-    def synthesize_DP_df(self, df):
+    def synthesize_DP_df_mbi(self, df): # For mbi FactoredInference directly
         # Convert to MBI Dataset format
         mbi_dataset = formatters.df_to_MBIDataset(df, self.domain_dict)
 

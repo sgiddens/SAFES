@@ -3,7 +3,12 @@ import adult_preprocessing
 
 def define_settings():
     DP_settings_dict={
-        "cliques": 'all 2-way',
+        # If True, use wrapper from snsynth. If False, use mbi FactoredInference directly
+        "use_snsynth_package": True, 
+        # Required if using wrapper from snsynth
+        "smart_noise_synthesizer": 'aim', 
+        # Required if using mbi FactoredInference directly
+        "cliques": 'all 2-way', 
     }
 
     fair_settings_dict={
@@ -11,11 +16,11 @@ def define_settings():
         "favorable_classes": [1],
         "protected_attribute_names": [
             'race-reduced', 
-            # 'sex-num',
+            'sex-num',
         ],
         "privileged_classes": [
             [1],
-            # [1],
+            [1],
         ],
         "categorical_features": [
             'age-decade',
@@ -31,7 +36,7 @@ def define_settings():
         "metadata": {'label_maps': [{1.0: '>50K', 0.0: '<=50K'}],
                     'protected_attribute_maps': [
                         {1.0: 'White', 0.0: 'Non-white'},
-                        # {1.0: 'Male', 0.0: 'Female'},
+                        {1.0: 'Male', 0.0: 'Female'},
                     ]},
         "custom_distortion": 'adult',
         "verbose": False,
