@@ -11,7 +11,7 @@ from aif360.algorithms.preprocessing.optim_preproc_helpers.opt_tools import OptT
 # Custom files
 import formatters
 from dp_mechanisms import Laplace_mech
-import adult_preprocessing
+import adult.adult_preprocessing as adult_preprocessing
 
 class DataSynthesizer():
     def __init__(self, epsilon_DP=None, epsilon_fair=None,

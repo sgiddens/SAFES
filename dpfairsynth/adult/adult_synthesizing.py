@@ -1,5 +1,5 @@
 from synthesizer import DataSynthesizer
-import adult_preprocessing
+import adult.adult_preprocessing as adult_preprocessing
 
 def define_settings():
     DP_settings_dict={

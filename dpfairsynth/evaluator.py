@@ -10,8 +10,8 @@ from aif360.sklearn.metrics import statistical_parity_difference, average_odds_d
 
 from custom_metrics import mean_outcome_difference, KS_test
 from synthesizer import DataSynthesizer
-import adult_synthesizing
-import adult_preprocessing
+import adult.adult_synthesizing as adult_synthesizing
+import adult.adult_preprocessing as adult_preprocessing
 import utils
 
 class DPFairEvaluator():

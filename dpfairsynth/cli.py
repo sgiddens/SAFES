@@ -6,8 +6,8 @@ warnings.filterwarnings("ignore")
 
 import numpy as np
 
-import adult_preprocessing
-import adult_synthesizing
+import adult.adult_preprocessing as adult_preprocessing
+import adult.adult_synthesizing as adult_synthesizing
 from evaluator import DPFairEvaluator
 
 
