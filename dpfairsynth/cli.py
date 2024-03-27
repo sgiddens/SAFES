@@ -80,6 +80,10 @@ def main():
                                                                 args.epsilon_fair)
             print(df_synth.head())
             # df_synth.to_csv("synthesized_datasets/DPfair.csv", index=False)
+        elif args.dataset=='compas':
+            df_synth = compas_synthesizing.synthesizing_pipeline(args.epsilon_DP,
+                                                                 args.epsilon_fair)
+            print(df_synth)
         else:
             print("Chosen dataset not supported for synthesizing.")
     elif args.run_simulations:

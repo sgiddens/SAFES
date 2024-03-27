@@ -12,6 +12,7 @@ from aif360.algorithms.preprocessing.optim_preproc_helpers.opt_tools import OptT
 import formatters
 from dp_mechanisms import Laplace_mech
 import adult.adult_preprocessing as adult_preprocessing
+import compas.compas_preprocessing as compas_preprocessing
 
 class DataSynthesizer():
     def __init__(self, epsilon_DP=None, epsilon_fair=None,
@@ -68,6 +69,8 @@ class DataSynthesizer():
 
         if fair_settings_dict["custom_distortion"]=='adult':
             self.custom_distortion = adult_preprocessing.custom_distortion
+        elif fair_settings_dict["custom_distortion"]=='compas':
+            self.custom_distortion = compas_preprocessing.custom_distortion
 
     def set_misc_settings(self, misc_settings_dict):
         for k, v in misc_settings_dict.items():

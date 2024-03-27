@@ -1,9 +1,58 @@
 import pandas as pd
 import json
 
+from mbi import Dataset
+
 COMPAS_URL = "https://github.com/propublica/compas-analysis/blob/"\
     "bafff5da3f2e45eca6c2d5055faad269defd135a/"\
     "compas-scores-two-years.csv?raw=true"
+
+def custom_distortion(vold, vnew):
+    """Distortion function for the compas dataset. Same as was used in
+    http://papers.nips.cc/paper/6988-optimized-pre-processing-for-discrimination-prevention.
+    """
+    # Distortion cost
+    distort = {}
+    distort['two_year_recid'] = pd.DataFrame(
+                                {0:     [0., 2.],
+                                1:     [2., 0.]},
+                                index=[0, 1])
+    distort['age_cat-num'] = pd.DataFrame(
+                            {0: [0., 1., 2.],
+                            1:  [1., 0., 1.],
+                            2:  [2., 1., 0.]},
+                            index=[0, 1, 2])
+    distort['c_charge_degree-num'] = pd.DataFrame(
+                            {0:   [0., 2.],
+                            1:    [1., 0.]},
+                            index=[0, 1])
+    distort['priors_count-reduced-num'] = pd.DataFrame(
+                            {0: [0., 1., 2.],
+                            1:  [1., 0., 1.],
+                            2:  [2., 1., 0.]},
+                            index=[0, 1, 2])
+    distort['sex-num'] = pd.DataFrame(
+                        {1:    [0., 2.],
+                         0:    [2., 0.]},
+                         index=[1, 0])
+    distort['race-reduced-num'] = pd.DataFrame(
+                        {0:    [0., 2.],
+                         1:    [2., 0.]},
+                         index=[0, 1])
+    total_cost = 0.0
+    for k in vold:
+        if k in vnew:
+            total_cost += distort[k].loc[int(vnew[k]), int(vold[k])]
+    return total_cost
+
+def load_preprocessed_compas_data(file_path="preprocessed_data/compas/",
+                                 csv_file="compas_preprocessed.csv",
+                                 json_file="compas_domain.json",
+                                 features_to_drop=[]):
+    full_compas_data = Dataset.load(file_path+csv_file, file_path+json_file)
+    df_subset_compas_data = full_compas_data.df.drop(features_to_drop, axis=1)
+    domain_dict = {k: full_compas_data.domain.config[k] for k in df_subset_compas_data.columns}
+    return df_subset_compas_data, domain_dict
 
 def preprocessing_pipeline(file_path="preprocessed_data/compas/", 
                            csv_name="compas_preprocessed.csv",
@@ -40,7 +89,7 @@ def preprocess_all_variables(df):
 
 def preprocess_sex(df):
     def sex_map(sex):
-        if sex=="Male":
+        if sex=="Female":
             return 1
         else:
             return 0
@@ -68,7 +117,7 @@ def preprocess_race(df):
             return 1
         else:
             return 0
-    df["race-num"] = df["race"].apply(race_map)
+    df["race-reduced-num"] = df["race"].apply(race_map)
     df = df.drop("race", axis=1)
     return df
 
@@ -98,7 +147,7 @@ def preprocess_two_year_recid(df):
     return df
 
 def drop_remaining_variables(df):
-    return df[["sex-num", "race-num", "age_cat-num",
+    return df[["sex-num", "race-reduced-num", "age_cat-num",
                "c_charge_degree-num", 
                "priors_count-reduced-num", 
                "two_year_recid"]]
@@ -109,7 +158,7 @@ def save_compas_information(df, file_path, csv_name, json_name):
     # TODO: Incorporate building this dictionary into various functions
     compas_domain = {
         "sex-num": 2,
-        "race-num": 2,
+        "race-reduced-num": 2,
         "age_cat-num": 3,
         "c_charge_degree-num": 2,
         "priors_count-reduced-num": 3,
