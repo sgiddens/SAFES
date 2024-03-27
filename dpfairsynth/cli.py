@@ -8,6 +8,8 @@ import numpy as np
 
 import adult.adult_preprocessing as adult_preprocessing
 import adult.adult_synthesizing as adult_synthesizing
+import compas.compas_preprocessing as compas_preprocessing
+import compas.compas_synthesizing as compas_synthesizing
 from evaluator import DPFairEvaluator
 
 
@@ -25,7 +27,7 @@ def create_parser():
         "--dataset",
         action="store",
         type=str,
-        choices=['adult'],
+        choices=['adult', 'compas'],
         default='adult',
         help="The dataset to be used for preprocessing or "\
              "generating synthetic data. Defaults to 'adult'.", 
@@ -68,6 +70,8 @@ def main():
     if args.preprocess_data:
         if args.dataset=='adult':
             adult_preprocessing.preprocessing_pipeline()
+        elif args.dataset=='compas':
+            compas_preprocessing.preprocessing_pipeline()
         else:
             print("Chosen dataset not supported for preprocessing.")
     elif args.synthesize_data:
