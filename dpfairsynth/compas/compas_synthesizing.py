@@ -20,8 +20,8 @@ def define_settings():
             'sex-num',
         ],
         "privileged_classes": [
-            [1],
-            [1],
+            [1], # Caucasian
+            [1], # Female
         ],
         "categorical_features": [
             'age_cat-num',

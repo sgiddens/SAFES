@@ -5,13 +5,15 @@ import pandas as pd
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import precision_score, accuracy_score, f1_score, recall_score, roc_auc_score
+from sklearn.metrics import precision_score, accuracy_score, f1_score, recall_score#, roc_auc_score
 from aif360.sklearn.metrics import statistical_parity_difference, average_odds_difference
 
-from custom_metrics import mean_outcome_difference, KS_test
+from custom_metrics import mean_outcome_difference, KS_test, roc_auc_score
 from synthesizer import DataSynthesizer
-import adult.adult_synthesizing as adult_synthesizing
 import adult.adult_preprocessing as adult_preprocessing
+import adult.adult_synthesizing as adult_synthesizing
+import compas.compas_preprocessing as compas_preprocessing
+import compas.compas_synthesizing as compas_synthesizing
 import utils
 
 class DPFairEvaluator():
@@ -45,8 +47,16 @@ class DPFairEvaluator():
             df, domain_dict = adult_preprocessing.load_preprocessed_adult_data()
             # Define settings
             (self.DP_settings_dict, 
-            self.fair_settings_dict, 
-            self.misc_settings_dict) = adult_synthesizing.define_settings()
+             self.fair_settings_dict, 
+             self.misc_settings_dict) = adult_synthesizing.define_settings()
+            self.DP_settings_dict["domain_dict"] = domain_dict
+        elif dataset=="compas":
+            self.dataset = dataset
+            df, domain_dict = compas_preprocessing.load_preprocessed_compas_data()
+            # Define settings
+            (self.DP_settings_dict,
+             self.fair_settings_dict,
+             self.misc_settings_dict) = compas_synthesizing.define_settings()
             self.DP_settings_dict["domain_dict"] = domain_dict
         else:
             raise ValueError("dataset value not currently supported.")
@@ -147,14 +157,6 @@ class DPFairEvaluator():
                     df[attr].isin(priv_class), 1, 0) 
                     for attr, priv_class in zip(prot_attrs, priv_classes)], axis=0)
         return df
-        # if self.comb_prot_attr is None:
-        #     raise ValueError("comb_prot_attr attribute cannot be None")
-        # df[self.comb_prot_attr] = np.prod([np.where(
-        #     df[attr].isin(priv_class), 1, 0) 
-        #     for attr, priv_class in zip(self.protected_attribute_names_synth,
-        #                                  self.privileged_classes_synth)], 
-        #                                  axis=0)
-        # return df
     
     def format_df_aif360(self, df):
         ds_format = DataSynthesizer(None, None, # No DP/fairness for formatting
@@ -288,6 +290,8 @@ class DPFairEvaluator():
                     # Train and evaluate models
                     X_train_DPfair, y_train_DPfair = utils.df_to_Xy(
                         df_train_DPfair, self.y_label)
+                    y_train_DPfair = utils.convert_categorical_series_to_binary(
+                        y_train_DPfair, self.favorable_classes)
                     for model in self.models:
                         single_sim_dict["Model"] = type(model).__name__
                         model.fit(X_train_DPfair, y_train_DPfair)

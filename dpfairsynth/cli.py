@@ -90,11 +90,11 @@ def main():
         # warm_start_file = "simulation_results/adult/incomplete/simulations_2024-03-04_17-49-31.csv"
         warm_start_file = None
         linear_epsilons_priv = [None] + list(np.linspace(-2, 1, 7))
-        epsilons_fair = [None, 0.05, 0.1]
+        epsilons_fair = [None, 0.08, 0.12]
         dpfair_eval = DPFairEvaluator(args.dataset, 
                                       warm_start_file=warm_start_file)
         dpfair_eval.simulation_pipeline(linear_epsilons_priv,
-                                        epsilons_fair, n_repeats=30,
+                                        epsilons_fair, n_repeats=35,
                                         save_incomplete=True)
         print("Done!")
     else:

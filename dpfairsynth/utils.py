@@ -9,9 +9,12 @@ def Xy_to_df(X, y):
     return df
 
 def convert_categorical_series_to_binary(series, one_categories):
-    series.replace(one_categories, 1, inplace=True)
-    series.replace(series[series!=1].unique(), 0, inplace=True)
-    return series
+    series_copy = series.copy()
+    series_copy[:] = 0
+    series_copy[series.isin(one_categories)] = 1
+    # series.replace(one_categories, 1, inplace=True)
+    # series.replace(series[series!=1].unique(), 0, inplace=True)
+    return series_copy
 
 def get_time_passed(start):
     hours, remainder = divmod(time.time() - start, 3600)

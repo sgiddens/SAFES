@@ -1,7 +1,7 @@
 import pandas as pd
 import json
 
-from mbi import Dataset
+from mbi import Domain
 
 COMPAS_URL = "https://github.com/propublica/compas-analysis/blob/"\
     "bafff5da3f2e45eca6c2d5055faad269defd135a/"\
@@ -49,9 +49,11 @@ def load_preprocessed_compas_data(file_path="preprocessed_data/compas/",
                                  csv_file="compas_preprocessed.csv",
                                  json_file="compas_domain.json",
                                  features_to_drop=[]):
-    full_compas_data = Dataset.load(file_path+csv_file, file_path+json_file)
-    df_subset_compas_data = full_compas_data.df.drop(features_to_drop, axis=1)
-    domain_dict = {k: full_compas_data.domain.config[k] for k in df_subset_compas_data.columns}
+    full_compas_data = pd.read_csv(file_path+csv_file, index_col='id')
+    df_subset_compas_data = full_compas_data.drop(features_to_drop, axis=1)
+    config = json.load(open(file_path+json_file))
+    domain = Domain(config.keys(), config.values())
+    domain_dict = {k: domain.config[k] for k in df_subset_compas_data.columns}
     return df_subset_compas_data, domain_dict
 
 def preprocessing_pipeline(file_path="preprocessed_data/compas/", 

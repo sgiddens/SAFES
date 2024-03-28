@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.utils import shuffle
 from sklearn.linear_model import LogisticRegression
 from scipy.stats import ks_2samp
+from sklearn.metrics import roc_auc_score as original_auc
 
 def mean_outcome_difference(df, y_label, favorable_classes,
                             prot_attr, privileged_classes):
@@ -39,3 +40,12 @@ def KS_test(df_real, df_synth):
         "KS p-value": ks_pval,
     }
     return out_dict
+
+def roc_auc_score(y_true, y_score):
+    """Custom roc_auc_score to handle errors if all y_true 
+    are one class by random chance during simulations."""
+    try:
+        val = original_auc(y_true, y_score)
+    except:
+        val = np.nan
+    return val
