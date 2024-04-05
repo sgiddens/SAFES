@@ -62,6 +62,12 @@ def create_parser():
              "according to epsilon-fair constraint."
     )
 
+    parser.add_argument(
+        "--draw-graph",
+        action="store_true",
+        help="Save figure representation of produced graphical model from DP data synthesizer."
+    )
+
     return parser
 
 def main():
@@ -83,18 +89,28 @@ def main():
         elif args.dataset=='compas':
             df_synth = compas_synthesizing.synthesizing_pipeline(args.epsilon_DP,
                                                                  args.epsilon_fair)
-            print(df_synth)
+            print(df_synth.columns)
         else:
             print("Chosen dataset not supported for synthesizing.")
+    elif args.draw_graph:
+        if args.epsilon_DP is None:
+            print("epsilon_DP must be provided to draw graph.")
+            return
+        if args.dataset=='adult':
+            adult_synthesizing.draw_graph_pipeline(args.epsilon_DP)
+        elif args.dataset=='compas':
+            compas_synthesizing.draw_graph_pipeline(args.epsilon_DP)
+        else:
+            print("Chosen dataset not supported for graph drawing.")
     elif args.run_simulations:
-        # warm_start_file = "simulation_results/adult/incomplete/simulations_2024-03-04_17-49-31.csv"
+        # warm_start_file = "simulation_results/compas/incomplete/simulations_2024-04-01_23-21-23.csv"
         warm_start_file = None
-        linear_epsilons_priv = [None] + list(np.linspace(-2, 1, 7))
-        epsilons_fair = [None, 0.08, 0.12]
+        linear_epsilons_priv = [0.]#[None] + list(np.linspace(-2, 1, 7))
+        epsilons_fair =[0.1] #[None, 0.08, 0.12]
         dpfair_eval = DPFairEvaluator(args.dataset, 
                                       warm_start_file=warm_start_file)
         dpfair_eval.simulation_pipeline(linear_epsilons_priv,
-                                        epsilons_fair, n_repeats=35,
+                                        epsilons_fair, n_repeats=1,
                                         save_incomplete=True)
         print("Done!")
     else:

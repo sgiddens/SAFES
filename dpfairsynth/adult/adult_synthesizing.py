@@ -73,3 +73,18 @@ def synthesizing_pipeline(epsilon_DP, epsilon_fair):
     synth_df = data_synthesizer.synthesize_DP_fair_df(df)
     return synth_df
 
+def draw_graph_pipeline(epsilon_DP):
+    DP_settings_dict, fair_settings_dict, misc_settings_dict = define_settings()
+
+    # Get domain_dict
+    df, domain_dict = adult_preprocessing.load_preprocessed_adult_data()
+    DP_settings_dict["domain_dict"] = domain_dict
+    
+    # Synthesize data
+    data_synthesizer = DataSynthesizer(epsilon_DP, None,
+                                       DP_settings_dict, 
+                                       fair_settings_dict,
+                                       misc_settings_dict)
+    data_synthesizer.synthesize_DP_fair_df(df)
+    data_synthesizer.draw_graphical_model("simulation_results/adult/graphs/")
+    return

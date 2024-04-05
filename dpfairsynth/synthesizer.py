@@ -1,6 +1,9 @@
 from itertools import combinations
 from scipy import sparse
 import json
+import networkx as nx
+from matplotlib import pyplot as plt
+from datetime import datetime
 
 from mbi import FactoredInference
 from snsynth import Synthesizer
@@ -46,7 +49,6 @@ class DataSynthesizer():
                 misc_settings_dict={
                     "aif360_conversion": 'adult',
                 }):
-                #  custom_aif360_conversion='adult'):
         self.epsilon_DP = epsilon_DP
         self.epsilon_fair = epsilon_fair
 
@@ -61,6 +63,9 @@ class DataSynthesizer():
             
         if DP_settings_dict["domain_dict"]=='adult':
             with open("preprocessed_data/adult/adult_domain.json") as f:
+                self.domain_dict = json.load(f)
+        elif DP_settings_dict["domain_dict"]=='compas':
+            with open("preprocessed_data/compas/compas_domain.json") as f:
                 self.domain_dict = json.load(f)
 
     def set_fair_settings(self, fair_settings_dict):
@@ -154,6 +159,13 @@ class DataSynthesizer():
         synth = Synthesizer.create(synth=self.smart_noise_synthesizer, 
                                    epsilon=self.epsilon_DP)#, verbose=True)
         sample = synth.fit_sample(df)
+
+        # Save graph
+        G = synth.synthesizer.junction_tree.graph
+        node_mapping = {f'col{i}': col for i, col in enumerate(df.columns)}
+        nx.relabel_nodes(G, node_mapping, copy=False)
+        self.graph = G
+        
         return sample
 
     def synthesize_DP_df_mbi(self, df): # For mbi FactoredInference directly
@@ -193,6 +205,12 @@ class DataSynthesizer():
         # Convert to df
         df_DP = formatters.MBIDataset_to_df(DP_mbi_dataset)
 
+        # Save graph
+        G = model.model.junction_tree.graph
+        node_mapping = {f'col{i}': col for i, col in enumerate(df.columns)}
+        nx.relabel_nodes(G, node_mapping, copy=False)
+        self.graph = G
+
         return df_DP
 
     def synthesize_fair_df(self, std_dataset):
@@ -218,3 +236,12 @@ class DataSynthesizer():
             print("Fairness-transformed data failed to align with original...")
             return None
         return std_dataset_fair
+    
+    def draw_graphical_model(self, save_path="simulation_results/"):
+        nx.draw_networkx(self.graph, with_labels=True, node_color='skyblue', 
+                         node_size=1500, edge_color='black', linewidths=1, 
+                         font_size=15)
+        filename = f"graph_model_eps{self.epsilon_DP:.2}"
+        filename = filename.replace(".", "_")
+        filename = filename+f"-{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.pdf"
+        plt.savefig(save_path+filename)

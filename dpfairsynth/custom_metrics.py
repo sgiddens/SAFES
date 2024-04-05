@@ -49,3 +49,21 @@ def roc_auc_score(y_true, y_score):
     except:
         val = np.nan
     return val
+
+def true_positive_rate(y_true, y_pred):
+    pass
+
+def true_negative_rate(y_true, y_pred):
+    pass
+
+def false_positive_rate(y_true, y_pred):
+    pass
+
+def false_negative_rate(y_true, y_pred):
+    pass
+
+def one_way_TVD(df_real, df_synth):
+    pass
+
+def two_way_TVD(df_real, df_synth):
+    pass

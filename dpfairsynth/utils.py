@@ -1,4 +1,5 @@
 import time
+import pandas as pd
 
 def df_to_Xy(df, y_label):
     return df.drop(y_label, axis=1), df[y_label]
@@ -24,3 +25,8 @@ def get_time_passed(start):
 def metric_uses_score(metric_name):
     uses_score_metrics = ['roc_auc_score']
     return metric_name in uses_score_metrics
+
+def undo_aif360_dummies(df, non_dummy_cols, sep=None):
+    return pd.concat((df[non_dummy_cols],
+                      pd.from_dummies(df.drop(non_dummy_cols, axis=1), sep=sep)), 
+                      axis=1)

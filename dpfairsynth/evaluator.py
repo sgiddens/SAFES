@@ -5,6 +5,7 @@ import pandas as pd
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 from sklearn.metrics import precision_score, accuracy_score, f1_score, recall_score#, roc_auc_score
 from aif360.sklearn.metrics import statistical_parity_difference, average_odds_difference
 
@@ -19,7 +20,8 @@ import utils
 class DPFairEvaluator():
     def __init__(self, dataset,
                  models=[
-                     LogisticRegression(),
+                    #  LogisticRegression(),
+                     SVC(probability=True),
                  ],
                  dataset_utility_metrics=[
                      KS_test,
@@ -62,6 +64,9 @@ class DPFairEvaluator():
             raise ValueError("dataset value not currently supported.")
         self.y_label = self.fair_settings_dict["y_label"]
         self.favorable_classes = self.fair_settings_dict["favorable_classes"]
+
+        self.categorical_features = self.fair_settings_dict["categorical_features"]
+        self.features_to_keep = self.fair_settings_dict["features_to_keep"]
 
         self.protected_attribute_names_eval = self.misc_settings_dict["protected_attribute_names_eval"]
         self.privileged_classes_eval = self.misc_settings_dict["privileged_classes_eval"]
@@ -166,10 +171,16 @@ class DPFairEvaluator():
         return ds_format.synthesize_DP_fair_df(df)
 
     def evaluate_dataset_utility(self, df_orig, df_synth):
+        non_categorical_features = list(set(self.features_to_keep) - 
+                                        set(self.categorical_features))
+        df_orig = utils.undo_aif360_dummies(df_orig, non_categorical_features,
+                                            sep='=')
+        df_synth = utils.undo_aif360_dummies(df_synth, non_categorical_features,
+                                            sep='=')
         out_dict = {}
         for metric in self.dataset_utility_metrics:
             if metric.__name__=="KS_test":
-                out_dict.update(metric(df_orig, df_synth))
+                out_dict.update(metric(df_orig.copy(), df_synth.copy()))
             else:
                 out_dict[metric.__name__] = metric(df_orig, df_synth)
         return out_dict
