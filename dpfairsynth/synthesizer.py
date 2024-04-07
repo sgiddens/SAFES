@@ -206,7 +206,7 @@ class DataSynthesizer():
         df_DP = formatters.MBIDataset_to_df(DP_mbi_dataset)
 
         # Save graph
-        G = model.model.junction_tree.graph
+        G = model.junction_tree.graph
         node_mapping = {f'col{i}': col for i, col in enumerate(df.columns)}
         nx.relabel_nodes(G, node_mapping, copy=False)
         self.graph = G
