@@ -1,9 +1,11 @@
 import numpy as np 
 import pandas as pd
+from itertools import combinations
 from sklearn.utils import shuffle
 from sklearn.linear_model import LogisticRegression
 from scipy.stats import ks_2samp
 from sklearn.metrics import roc_auc_score as original_auc
+from sklearn.metrics import recall_score
 
 def mean_outcome_difference(df, y_label, favorable_classes,
                             prot_attr, privileged_classes):
@@ -50,20 +52,25 @@ def roc_auc_score(y_true, y_score):
         val = np.nan
     return val
 
-def true_positive_rate(y_true, y_pred):
-    pass
+def specificity_score(y_true, y_pred):
+    return recall_score(y_true, y_pred, pos_label=0)
 
-def true_negative_rate(y_true, y_pred):
-    pass
+def TVD(df_real, df_synth, cols):
+    return (df_real[cols].value_counts(normalize=True) - 
+            df_synth[cols].value_counts(normalize=True)).abs().sum()/2
 
-def false_positive_rate(y_true, y_pred):
-    pass
+def n_way_TVDs(df_real, df_synth, n):
+    combs = list(combinations(df_real.columns, n))
+    out_dict = {}
+    for c in combs:
+        out_dict[f"TVD_{n}way_{'+'.join(list(c))}"] = TVD(df_real, df_synth, list(c))
+    return out_dict
 
-def false_negative_rate(y_true, y_pred):
-    pass
+def one_way_TVDs(df_real, df_synth):
+    return n_way_TVDs(df_real, df_synth, n=1)
 
-def one_way_TVD(df_real, df_synth):
-    pass
+def two_way_TVDs(df_real, df_synth):
+    return n_way_TVDs(df_real, df_synth, n=2)
 
-def two_way_TVD(df_real, df_synth):
-    pass
+def three_way_TVDs(df_real, df_synth):
+    return n_way_TVDs(df_real, df_synth, n=3)

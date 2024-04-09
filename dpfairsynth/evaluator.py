@@ -3,13 +3,15 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from itertools import combinations
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.metrics import precision_score, accuracy_score, f1_score, recall_score#, roc_auc_score
 from aif360.sklearn.metrics import statistical_parity_difference, average_odds_difference
 
-from custom_metrics import mean_outcome_difference, KS_test, roc_auc_score
+from custom_metrics import mean_outcome_difference, KS_test, roc_auc_score, \
+    specificity_score, one_way_TVDs, two_way_TVDs, three_way_TVDs
 from synthesizer import DataSynthesizer
 import adult.adult_preprocessing as adult_preprocessing
 import adult.adult_synthesizing as adult_synthesizing
@@ -20,11 +22,14 @@ import utils
 class DPFairEvaluator():
     def __init__(self, dataset,
                  models=[
-                    #  LogisticRegression(),
-                     SVC(probability=True),
+                     LogisticRegression(),
+                    #  SVC(probability=True),
                  ],
                  dataset_utility_metrics=[
                      KS_test,
+                     one_way_TVDs,
+                     two_way_TVDs,
+                     three_way_TVDs,
                  ],
                  dataset_fairness_metrics=[
                      mean_outcome_difference,
@@ -34,6 +39,7 @@ class DPFairEvaluator():
                      f1_score,
                      precision_score,
                      recall_score,
+                     specificity_score,
                      roc_auc_score,
                  ],
                  model_fairness_metrics=[
@@ -107,9 +113,26 @@ class DPFairEvaluator():
             "Model": [],
         }
         for metric in self.dataset_utility_metrics:
+            non_categorical_features = list(set(self.features_to_keep) - 
+                                        set(self.categorical_features))
+            temp_df = utils.undo_aif360_dummies(self.df_test_aif360_formatted, 
+                                                non_categorical_features,
+                                                sep='=')
             if metric.__name__=="KS_test":
                 results_dict.update({"KS Statistic": [],
                                      "KS p-value": []})
+            elif metric.__name__=="one_way_TVDs":
+                combs = list(combinations(temp_df.columns, 1))
+                results_dict.update({f"TVD_1way_{'+'.join(list(c))}": []
+                                     for c in combs})
+            elif metric.__name__=="two_way_TVDs":
+                combs = list(combinations(temp_df.columns, 2))
+                results_dict.update({f"TVD_2way_{'+'.join(list(c))}": []
+                                     for c in combs})
+            elif metric.__name__=="three_way_TVDs":
+                combs = list(combinations(temp_df.columns, 3))
+                results_dict.update({f"TVD_3way_{'+'.join(list(c))}": []
+                                     for c in combs})
             else:
                 results_dict.update({f"{metric.__name__}": []})
 
@@ -179,7 +202,8 @@ class DPFairEvaluator():
                                             sep='=')
         out_dict = {}
         for metric in self.dataset_utility_metrics:
-            if metric.__name__=="KS_test":
+            if metric.__name__ in ["KS_test", "one_way_TVDs",
+                                   "two_way_TVDs", "three_way_TVDs"]:
                 out_dict.update(metric(df_orig.copy(), df_synth.copy()))
             else:
                 out_dict[metric.__name__] = metric(df_orig, df_synth)

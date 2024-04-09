@@ -105,13 +105,21 @@ def main():
     elif args.run_simulations:
         # warm_start_file = "simulation_results/compas/incomplete/simulations_2024-04-01_23-21-23.csv"
         warm_start_file = None
-        linear_epsilons_priv = [0.]#[None] + list(np.linspace(-2, 1, 7))
-        epsilons_fair =[0.1] #[None, 0.08, 0.12]
+        linear_epsilons_priv = [None] + list(np.linspace(-2, 1, 7))
+
+        epsilons_fair_adult = [None, 0.025, 0.05] # Default for adult
+        epsilons_fair_compas = [None, 0.08, 0.12] # Default for compas
+        if args.dataset=='adult':
+            epsilons_fair = epsilons_fair_adult
+        elif args.dataset=='compas':
+            epsilons_fair = epsilons_fair_compas
+        # epsilons_fair = [] # Custom if desired
+        
         dpfair_eval = DPFairEvaluator(args.dataset, 
                                       warm_start_file=warm_start_file)
         dpfair_eval.simulation_pipeline(linear_epsilons_priv,
-                                        epsilons_fair, n_repeats=1,
-                                        save_incomplete=True)
+                                        epsilons_fair, n_repeats=35,
+                                        save_incomplete=False)
         print("Done!")
     else:
         print("No valid command line argument present.")
