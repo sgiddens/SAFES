@@ -60,7 +60,7 @@ def TVD(df_real, df_synth, cols):
             df_synth[cols].value_counts(normalize=True)).abs().sum()/2
 
 def n_way_TVDs(df_real, df_synth, n):
-    combs = list(combinations(df_real.columns, n))
+    combs = list(combinations(sorted(df_real.columns.tolist()), n))
     out_dict = {}
     for c in combs:
         out_dict[f"TVD_{n}way_{'+'.join(list(c))}"] = TVD(df_real, df_synth, list(c))

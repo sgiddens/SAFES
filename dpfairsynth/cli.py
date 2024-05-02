@@ -84,7 +84,7 @@ def main():
         if args.dataset=='adult':
             df_synth = adult_synthesizing.synthesizing_pipeline(args.epsilon_DP,
                                                                 args.epsilon_fair)
-            print(df_synth.head())
+            print(list(df_synth.columns))
             # df_synth.to_csv("synthesized_datasets/DPfair.csv", index=False)
         elif args.dataset=='compas':
             df_synth = compas_synthesizing.synthesizing_pipeline(args.epsilon_DP,
@@ -103,7 +103,7 @@ def main():
         else:
             print("Chosen dataset not supported for graph drawing.")
     elif args.run_simulations:
-        # warm_start_file = "simulation_results/compas/incomplete/simulations_2024-04-01_23-21-23.csv"
+        # warm_start_file = "simulation_results/compas/complete/simulations_2024-04-09_15-37-20.csv"
         warm_start_file = None
         linear_epsilons_priv = [None] + list(np.linspace(-2, 1, 7))
 
@@ -113,7 +113,7 @@ def main():
             epsilons_fair = epsilons_fair_adult
         elif args.dataset=='compas':
             epsilons_fair = epsilons_fair_compas
-        # epsilons_fair = [] # Custom if desired
+        # epsilons_fair = [0.12] # Custom if desired
         
         dpfair_eval = DPFairEvaluator(args.dataset, 
                                       warm_start_file=warm_start_file)

@@ -118,19 +118,20 @@ class DPFairEvaluator():
             temp_df = utils.undo_aif360_dummies(self.df_test_aif360_formatted, 
                                                 non_categorical_features,
                                                 sep='=')
+            temp_cols = sorted(temp_df.columns.tolist())
             if metric.__name__=="KS_test":
                 results_dict.update({"KS Statistic": [],
                                      "KS p-value": []})
             elif metric.__name__=="one_way_TVDs":
-                combs = list(combinations(temp_df.columns, 1))
+                combs = list(combinations(temp_cols, 1))
                 results_dict.update({f"TVD_1way_{'+'.join(list(c))}": []
                                      for c in combs})
             elif metric.__name__=="two_way_TVDs":
-                combs = list(combinations(temp_df.columns, 2))
+                combs = list(combinations(temp_cols, 2))
                 results_dict.update({f"TVD_2way_{'+'.join(list(c))}": []
                                      for c in combs})
             elif metric.__name__=="three_way_TVDs":
-                combs = list(combinations(temp_df.columns, 3))
+                combs = list(combinations(temp_cols, 3))
                 results_dict.update({f"TVD_3way_{'+'.join(list(c))}": []
                                      for c in combs})
             else:

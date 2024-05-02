@@ -8,9 +8,6 @@ COMPAS_URL = "https://github.com/propublica/compas-analysis/blob/"\
     "compas-scores-two-years.csv?raw=true"
 
 def custom_distortion(vold, vnew):
-    """Distortion function for the compas dataset. Same as was used in
-    http://papers.nips.cc/paper/6988-optimized-pre-processing-for-discrimination-prevention.
-    """
     # Distortion cost
     distort = {}
     distort['two_year_recid'] = pd.DataFrame(
