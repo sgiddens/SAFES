@@ -103,17 +103,17 @@ def main():
         else:
             print("Chosen dataset not supported for graph drawing.")
     elif args.run_simulations:
-        # warm_start_file = "simulation_results/compas/complete/simulations_2024-04-09_15-37-20.csv"
+        # warm_start_file = "simulation_results/compas/complete/simulations_2024-04-09_19-52-41.csv"
         warm_start_file = None
         linear_epsilons_priv = [None] + list(np.linspace(-2, 1, 7))
 
-        epsilons_fair_adult = [None, 0.025, 0.05] # Default for adult
-        epsilons_fair_compas = [None, 0.08, 0.12] # Default for compas
+        epsilons_fair_adult = [None, 0.025, 0.1] # Default for adult
+        epsilons_fair_compas = [None, 0.08, 0.15] # Default for compas
         if args.dataset=='adult':
             epsilons_fair = epsilons_fair_adult
         elif args.dataset=='compas':
             epsilons_fair = epsilons_fair_compas
-        # epsilons_fair = [0.12] # Custom if desired
+        # epsilons_fair = [0.15] # Custom if desired
         
         dpfair_eval = DPFairEvaluator(args.dataset, 
                                       warm_start_file=warm_start_file)
